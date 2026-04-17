@@ -4,12 +4,12 @@
 
 | Feld | Wert |
 |------|------|
-| Aktive Phase | Phase 0 — Repo-Bootstrap |
-| Aktueller Schritt | Schritt 0.5 erledigt (vitest.config.ts + vitest.setup.ts + playwright.config.ts + `--passWithNoTests`). Phase-0-Gate **technisch** gruen: build ✓ typecheck ✓ lint ✓ test ✓. Offen fuer Phase-0-Komplettierung: manueller `pnpm dev`-UI-Check + shadcn-Init + README-Skelett |
+| Aktive Phase | **Phase 0 — Gate erreicht**, wartet auf Freigabe fuer Phase 1 |
+| Aktueller Schritt | Alle Schritte 0.1–0.6 erledigt. Gate komplett gruen: `pnpm dev` ✓ (200 OK, Titel gerendert, lang=de, Shell sichtbar) · `pnpm build` ✓ · `pnpm typecheck` ✓ · `pnpm lint` ✓ · `pnpm test` ✓ |
 | Session | 1 |
 | Letztes Update | 2026-04-18 |
-| Blockiert durch | — |
-| Naechste Aktion | Schritt 0.6: `pnpm dev`-Smoke-Check, `components.json` + shadcn-Init, `README.md`-Skelett; dann Phase-0 abgeschlossen → Commit `feat(phase-0): ...` und Phase 1 starten |
+| Blockiert durch | User-Freigabe fuer Phase 1 |
+| Naechste Aktion | Nach Freigabe: Phase 1 Schritt 1 — `lib/types.ts` mit allen Typen aus `doc/DATA_MODEL.md` (`Patient`, `Hospital`, `Capacity`, `Incident`, `PlannedIntake`, `FlightArrival`, `Event`, `Recommendation`, `Alert`) |
 
 ## Changelog
 
@@ -31,6 +31,26 @@
 - **00:56** — Phase 0, Schritt 0.3: `tailwind.config.ts` mit allen Liquid-Glass-Tokens aus `doc/DESIGN.md` (Farben, Typografie-Skalen, Spacing, Radii, Shadows, Blur, Z-Indizes, Timing-Funktionen). Tokens als CSS-var-Bridges — die konkreten Werte kommen in Schritt 0.4 in `app/globals.css`. shadcn-kompatibles Token-Mapping vorbereitet. Typecheck gruen.
 - **01:02** — Phase 0, Schritt 0.4: App-Shell angelegt: `app/layout.tsx` (html lang=de, Metadata), `app/page.tsx` (Placeholder-Text, Liquid-Glass-konformes Styling via `text-caption` + CSS-var), `app/globals.css` (komplette DESIGN.md §1-Tokens + shadcn-HSL-Mapping + backdrop-filter-Fallback). Begleitende Fixes: ESLint-Downgrade auf 8 (Next 14 kompatibel), `globals.d.ts` mit `declare module '*.css'` fuer TS-6-side-effect-Import. Gate-Stand: `pnpm build`, `pnpm typecheck`, `pnpm lint` alle gruen; `pnpm test` faellt noch weil Testrunner nicht konfiguriert (Schritt 0.5).
 - **01:08** — Phase 0, Schritt 0.5: Testrunner-Setup. `vitest.config.ts` (jsdom, globals, `@`-Alias, include-Globs fuer tests/unit|integration + lib + components), `vitest.setup.ts` mit `@testing-library/jest-dom/vitest`, `playwright.config.ts` (chromium, webServer `pnpm dev`, 1920x1080, retries in CI). `package.json` test-Script auf `--passWithNoTests`. Phase-0-Gate technisch gruen (build/typecheck/lint/test alle ✓).
+- **01:15** — Phase 0, Schritt 0.6 **(Phase-Abschluss)**: `pnpm dev`-Smoke-Check via curl gegen `http://localhost:3000/` → HTTP 200, Titel "Rettungsleitstelle — MANV/Grosslage-Dashboard", `<html lang="de">`, Shell-Text "Rettungsleitstelle — Bootstrap-Phase", Stylesheet verlinkt, keine Console-Errors. shadcn manuell aufgesetzt (non-interaktiv, kontrollierter): `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tailwindcss-animate` installiert; `components.json` gemaess DESIGN.md §10; `lib/utils.ts` mit `cn()`; `tailwind.config.ts` Plugin `tailwindcss-animate` eingehaengt. `README.md`-Skelett mit Stack-, Scripts-, Dokumentations- und Architektur-Leitplanken. Gate-Rerun: alle vier Checks gruen.
+
+## Phase-0-Abschluss-Stand
+
+| Deliverable laut PHASES.md Phase 0 | Status |
+|---|---|
+| git init + erster Commit | ✓ (c6b9928) |
+| pnpm init + package.json mit Scripts | ✓ |
+| Alle SPEC §2-Pakete installiert | ✓ |
+| tsconfig.json strict + @-Alias | ✓ |
+| next.config.mjs | ✓ |
+| postcss.config.mjs | ✓ |
+| .eslintrc.json | ✓ |
+| .gitignore, .env.example | ✓ |
+| app/layout.tsx, app/page.tsx, app/globals.css | ✓ |
+| tailwind.config.ts mit Liquid-Glass-Tokens | ✓ |
+| components.json (shadcn) | ✓ (manuell, statt shadcn CLI) |
+| vitest.config.ts + playwright.config.ts | ✓ |
+| STATUS.md-Skelett | ✓ (lebt seit Session 1) |
+| README.md-Skelett | ✓ |
 
 ## Loop-Betrieb
 
