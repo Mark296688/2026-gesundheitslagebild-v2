@@ -5,11 +5,11 @@
 | Feld | Wert |
 |------|------|
 | Aktive Phase | Phase 0 — Repo-Bootstrap |
-| Aktueller Schritt | Alle Vertragsdokumente in `doc/` vollstaendig, Bootstrap laut `doc/PHASES.md` §0 steht aus |
+| Aktueller Schritt | Schritt 0.1 erledigt (pnpm init + SPEC §2 Dependencies installiert, Peer-Pins gesetzt). Als naechstes Schritt 0.2: tsconfig + next.config + postcss + .eslintrc |
 | Session | 1 |
 | Letztes Update | 2026-04-18 |
 | Blockiert durch | — |
-| Naechste Aktion | `doc/START_HERE.md` lesen, dann `doc/PHASES.md` Phase 0 abarbeiten |
+| Naechste Aktion | Schritt 0.2: `tsconfig.json` strict + `next.config.mjs` + `postcss.config.mjs` + `.eslintrc.json` anlegen |
 
 ## Changelog
 
@@ -26,6 +26,7 @@
   - `doc/SIMULATION.md`, `doc/ROUTING.md`, `doc/SCENARIOS.md`, `doc/MEASURES.md`
   - `doc/DESIGN.md`, `doc/UI.md`, `doc/TIMELINE.md`
   - `doc/AUDIT.md`, `doc/TESTING.md`
+- **00:44** — Phase 0, Schritt 0.1: `pnpm init` + `package.json` mit allen Scripts (dev/build/start/lint/typecheck/test/test:e2e/format). SPEC-§2-Dependencies installiert: next@14, react@18, maplibre-gl, zustand, recharts, idb, exceljs (runtime); tailwind@3, typescript, vitest, @playwright/test, RTL-Toolkit, eslint@9 + eslint-config-next@14, tsx, prettier (dev). Peer-Pins gesetzt (eslint, @types/react, eslint-config-next) damit Gate gruenbar bleibt.
 
 ## Loop-Betrieb
 
