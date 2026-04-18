@@ -9,6 +9,7 @@ import { Header } from '@/components/panels/Header';
 import { LeftPanel } from '@/components/panels/LeftPanel';
 import { IncidentLauncher } from '@/components/panels/IncidentLauncher';
 import { PlannedIntakeForm } from '@/components/panels/PlannedIntakeForm';
+import { RightPanel } from '@/components/panels/RightPanel';
 
 export default function Home() {
   return (
@@ -29,6 +30,7 @@ export default function Home() {
         <div style={{ height: 1, background: 'var(--border-1)' }} />
         <PlannedIntakeForm />
       </LeftPanel>
+      <RightPanel />
     </main>
   );
 }

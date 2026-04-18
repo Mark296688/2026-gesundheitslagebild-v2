@@ -10,6 +10,7 @@ import maplibregl from 'maplibre-gl';
 import type { Feature, FeatureCollection, Point } from 'geojson';
 import type { Hospital, ResourceType } from '@/lib/types';
 import { getHospitals } from '@/lib/data/hospitalsLoader';
+import { useSimStore } from '@/lib/store';
 import {
   RESOURCE_TYPES,
   RESOURCE_DISPLAY,
@@ -214,14 +215,23 @@ export function HospitalLayer({ map, seed = 42 }: HospitalLayerProps) {
       popup.remove();
     };
 
+    const onClick = (e: MapLayerMouseEvent) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const props = f.properties as unknown as HospitalProps;
+      useSimStore.getState().selectHospital(props.id);
+    };
+
     map.on('mouseenter', LAYER_ID, onEnter);
     map.on('mousemove', LAYER_ID, onMove);
     map.on('mouseleave', LAYER_ID, onLeave);
+    map.on('click', LAYER_ID, onClick);
 
     return () => {
       map.off('mouseenter', LAYER_ID, onEnter);
       map.off('mousemove', LAYER_ID, onMove);
       map.off('mouseleave', LAYER_ID, onLeave);
+      map.off('click', LAYER_ID, onClick);
       popup.remove();
       // Layer/source aufraeumen nur beim Unmount — bei map.remove() macht das der
       // Destroy automatisch. Hier defensiv entfernen, falls Layer-Stack neu gebaut wird.

@@ -342,4 +342,7 @@ export interface SimState {
   forkPreviewCache: Record<string, ForkPreviewResult>;
 
   filters: SimFilters;
+
+  // UI-State (non-sim, aber im Store fuer globalen Zugriff).
+  selectedHospitalId?: string;
 }

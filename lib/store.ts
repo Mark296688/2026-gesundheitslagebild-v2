@@ -36,6 +36,7 @@ type Store = SimState & {
   launchPlannedIntake: (intake: PlannedIntake) => void;
   announcePlannedIntake: (config: AnnounceIntakeConfig) => string;
   executeRecommendation: (recommendationId: string) => void;
+  selectHospital: (id: string | undefined) => void;
 };
 
 function initialState(seed = DEFAULT_SEED): SimState {
@@ -177,6 +178,10 @@ export const useSimStore = create<Store>((set, get) => ({
     };
     set((st) => ({ plannedIntakes: [...st.plannedIntakes, intake] }));
     return intake.id;
+  },
+
+  selectHospital: (id) => {
+    set({ selectedHospitalId: id });
   },
 
   executeRecommendation: (recommendationId: string) => {
