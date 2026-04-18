@@ -12,28 +12,52 @@ import { flowPath, flowPosition, flowDurationMin } from '@/lib/flow';
 import type { LngLat } from '@/lib/geo';
 
 interface LineProps {
-  patientId: string;
+  key: string;
   color: string;
+  width: number;
+  count: number;
+  midLng: number;
+  midLat: number;
 }
 
 interface DotProps {
-  patientId: string;
+  key: string;
   color: string;
+}
+
+interface LabelProps {
+  key: string;
+  text: string;
 }
 
 const SRC_LINES = 'rl-routes-lines';
 const SRC_DOTS = 'rl-routes-dots';
+const SRC_LABELS = 'rl-routes-labels';
 const LAYER_LINES = 'rl-routes-lines';
 const LAYER_DOTS = 'rl-routes-dots';
+const LAYER_LABELS = 'rl-routes-labels';
 
 const COLOR_MANV = '#007AFF';
 const COLOR_TRANSFER = '#AF52DE';
 const COLOR_PLANNED = '#34C759';
 
-function colorForPatient(p: Patient): string {
-  if (p.status === 'transferring') return COLOR_TRANSFER;
-  if (p.source === 'planned-intake') return COLOR_PLANNED;
-  return COLOR_MANV;
+type FlowKind = 'manv' | 'transfer' | 'planned';
+
+function flowKind(p: Patient): FlowKind {
+  if (p.status === 'transferring') return 'transfer';
+  if (p.source === 'planned-intake') return 'planned';
+  return 'manv';
+}
+
+function colorForKind(k: FlowKind): string {
+  switch (k) {
+    case 'transfer':
+      return COLOR_TRANSFER;
+    case 'planned':
+      return COLOR_PLANNED;
+    default:
+      return COLOR_MANV;
+  }
 }
 
 function incidentLoc(patient: Patient, incidents: Incident[]): LngLat | null {
@@ -42,6 +66,14 @@ function incidentLoc(patient: Patient, incidents: Incident[]): LngLat | null {
     if (inc) return inc.location;
   }
   return null;
+}
+
+interface AggregatedFlow {
+  key: string;
+  from: LngLat;
+  to: LngLat;
+  kind: FlowKind;
+  patients: Patient[];
 }
 
 interface RouteLayerProps {
@@ -68,6 +100,12 @@ export function RouteLayer({ map }: RouteLayerProps) {
           data: { type: 'FeatureCollection', features: [] },
         });
       }
+      if (!map.getSource(SRC_LABELS)) {
+        map.addSource(SRC_LABELS, {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] },
+        });
+      }
       if (!map.getLayer(LAYER_LINES)) {
         map.addLayer({
           id: LAYER_LINES,
@@ -75,8 +113,8 @@ export function RouteLayer({ map }: RouteLayerProps) {
           source: SRC_LINES,
           paint: {
             'line-color': ['get', 'color'],
-            'line-width': 2,
-            'line-opacity': 0.75,
+            'line-width': ['get', 'width'],
+            'line-opacity': 0.8,
           },
           layout: { 'line-cap': 'round', 'line-join': 'round' },
         });
@@ -88,22 +126,40 @@ export function RouteLayer({ map }: RouteLayerProps) {
           source: SRC_DOTS,
           paint: {
             'circle-color': ['get', 'color'],
-            'circle-radius': 5,
+            'circle-radius': 6,
             'circle-stroke-color': '#FFFFFF',
             'circle-stroke-width': 2,
-            'circle-opacity': 0.95,
+            'circle-opacity': 0.98,
+          },
+        });
+      }
+      if (!map.getLayer(LAYER_LABELS)) {
+        map.addLayer({
+          id: LAYER_LABELS,
+          type: 'symbol',
+          source: SRC_LABELS,
+          layout: {
+            'text-field': ['get', 'text'],
+            'text-size': 11,
+            'text-offset': [0, -1.6],
+            'text-allow-overlap': true,
+            'text-ignore-placement': true,
+            'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold', 'sans-serif'],
+          },
+          paint: {
+            'text-color': '#1D1D1F',
+            'text-halo-color': '#FFFFFF',
+            'text-halo-width': 2,
           },
         });
       }
     };
-    if (map.isStyleLoaded()) ensure();
-    else map.once('load', ensure);
+    ensure();
   }, [map]);
 
-  const { lineFC, dotFC } = useMemo(() => {
-    const lines: Array<Feature<LineString, LineProps>> = [];
-    const dots: Array<Feature<Point, DotProps>> = [];
-
+  const { lineFC, dotFC, labelFC } = useMemo(() => {
+    // Gruppiere Patient-Flows nach (from-hospital|incident) → to-hospital.
+    const groups = new Map<string, AggregatedFlow>();
     for (const p of patients) {
       if (p.status !== 'transport' && p.status !== 'transferring') continue;
 
@@ -122,23 +178,63 @@ export function RouteLayer({ map }: RouteLayerProps) {
       }
       if (!from || !to || p.arrivedAt == null) continue;
 
-      const poly = flowPath(from, to);
-      const durMin = flowDurationMin(from, to);
-      const startSim = p.arrivedAt - durMin;
-      const progress =
-        durMin <= 0 ? 1 : Math.max(0, Math.min(1, (simTime - startSim) / durMin));
+      const kind = flowKind(p);
+      const key = `${kind}|${from[0].toFixed(4)},${from[1].toFixed(4)}|${to[0].toFixed(4)},${to[1].toFixed(4)}`;
+      let group = groups.get(key);
+      if (!group) {
+        group = { key, from, to, kind, patients: [] };
+        groups.set(key, group);
+      }
+      group.patients.push(p);
+    }
 
-      const color = colorForPatient(p);
+    const lines: Array<Feature<LineString, LineProps>> = [];
+    const dots: Array<Feature<Point, DotProps>> = [];
+    const labels: Array<Feature<Point, LabelProps>> = [];
+
+    for (const [, g] of groups) {
+      const poly = flowPath(g.from, g.to);
+      const color = colorForKind(g.kind);
+      const count = g.patients.length;
+      // Dicke: 2.5 + 1.5*sqrt(count), gedeckelt bei 10.
+      const width = Math.min(10, 2.5 + 1.5 * Math.sqrt(count));
+
       lines.push({
         type: 'Feature',
         geometry: { type: 'LineString', coordinates: poly },
-        properties: { patientId: p.id, color },
+        properties: {
+          key: g.key,
+          color,
+          width,
+          count,
+          midLng: poly[Math.floor(poly.length / 2)][0],
+          midLat: poly[Math.floor(poly.length / 2)][1],
+        },
       });
-      dots.push({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: flowPosition(from, to, progress) },
-        properties: { patientId: p.id, color },
-      });
+
+      // Ein Label-Punkt in der Mitte mit der Anzahl Patienten.
+      if (count > 1) {
+        const mid = poly[Math.floor(poly.length / 2)];
+        labels.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: mid },
+          properties: { key: g.key, text: `${count} Patienten` },
+        });
+      }
+
+      // Pro Patient eine Pille — zeitlich verteilt entlang der Linie, damit
+      // man sie als einzelnen Fluss erkennt (Staffelung durch arrivedAt).
+      for (const p of g.patients) {
+        const durMin = flowDurationMin(g.from, g.to);
+        const startSim = (p.arrivedAt ?? 0) - durMin;
+        const progress =
+          durMin <= 0 ? 1 : Math.max(0, Math.min(1, (simTime - startSim) / durMin));
+        dots.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: flowPosition(g.from, g.to, progress) },
+          properties: { key: `${g.key}|${p.id}`, color },
+        });
+      }
     }
 
     const lineFC: FeatureCollection<LineString, LineProps> = {
@@ -149,19 +245,21 @@ export function RouteLayer({ map }: RouteLayerProps) {
       type: 'FeatureCollection',
       features: dots,
     };
-    return { lineFC, dotFC };
+    const labelFC: FeatureCollection<Point, LabelProps> = {
+      type: 'FeatureCollection',
+      features: labels,
+    };
+    return { lineFC, dotFC, labelFC };
   }, [patients, incidents, hospitals, simTime]);
 
   useEffect(() => {
-    const apply = () => {
-      const srcLines = map.getSource(SRC_LINES) as GeoJSONSource | undefined;
-      const srcDots = map.getSource(SRC_DOTS) as GeoJSONSource | undefined;
-      if (srcLines) srcLines.setData(lineFC);
-      if (srcDots) srcDots.setData(dotFC);
-    };
-    if (map.isStyleLoaded()) apply();
-    else map.once('load', apply);
-  }, [map, lineFC, dotFC]);
+    const srcLines = map.getSource(SRC_LINES) as GeoJSONSource | undefined;
+    const srcDots = map.getSource(SRC_DOTS) as GeoJSONSource | undefined;
+    const srcLabels = map.getSource(SRC_LABELS) as GeoJSONSource | undefined;
+    if (srcLines) srcLines.setData(lineFC);
+    if (srcDots) srcDots.setData(dotFC);
+    if (srcLabels) srcLabels.setData(labelFC);
+  }, [map, lineFC, dotFC, labelFC]);
 
   return null;
 }

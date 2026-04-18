@@ -150,45 +150,42 @@ export function HospitalLayer({ map }: HospitalLayerProps) {
   // Mount registrieren, beim Unmount sauber entfernen. Keine Dependency auf
   // Live-Daten → kein Flimmern durch Layer-Recreate pro Tick.
   useEffect(() => {
-    const ensureSourceAndLayers = () => {
-      if (!map.getSource(SOURCE_ID)) {
-        map.addSource(SOURCE_ID, {
-          type: 'geojson',
-          data: { type: 'FeatureCollection', features: [] },
-        });
-      }
-      if (!map.getLayer(LAYER_ID_HALO)) {
-        map.addLayer({
-          id: LAYER_ID_HALO,
-          type: 'circle',
-          source: SOURCE_ID,
-          paint: {
-            'circle-color': ['get', 'color'],
-            'circle-opacity': 0.25,
-            'circle-radius': ['+', ['get', 'radius'], 4],
-            'circle-blur': 0.6,
-          },
-        });
-      }
-      if (!map.getLayer(LAYER_ID)) {
-        map.addLayer({
-          id: LAYER_ID,
-          type: 'circle',
-          source: SOURCE_ID,
-          paint: {
-            'circle-color': ['get', 'color'],
-            'circle-radius': ['get', 'radius'],
-            'circle-stroke-color': ['get', 'strokeColor'],
-            'circle-stroke-width': ['get', 'strokeWidth'],
-            'circle-stroke-opacity': 0.9,
-            'circle-opacity': ['get', 'opacity'],
-          },
-        });
-      }
-    };
-
-    if (map.isStyleLoaded()) ensureSourceAndLayers();
-    else map.once('load', ensureSourceAndLayers);
+    // MapContainer uebergibt `map` erst nach dem 'load'-Event (setMap(instance)
+    // in MapContainer.tsx). Hier ist Style garantiert geladen → sync setup.
+    if (!map.getSource(SOURCE_ID)) {
+      map.addSource(SOURCE_ID, {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      });
+    }
+    if (!map.getLayer(LAYER_ID_HALO)) {
+      map.addLayer({
+        id: LAYER_ID_HALO,
+        type: 'circle',
+        source: SOURCE_ID,
+        paint: {
+          'circle-color': ['get', 'color'],
+          'circle-opacity': 0.25,
+          'circle-radius': ['+', ['get', 'radius'], 4],
+          'circle-blur': 0.6,
+        },
+      });
+    }
+    if (!map.getLayer(LAYER_ID)) {
+      map.addLayer({
+        id: LAYER_ID,
+        type: 'circle',
+        source: SOURCE_ID,
+        paint: {
+          'circle-color': ['get', 'color'],
+          'circle-radius': ['get', 'radius'],
+          'circle-stroke-color': ['get', 'strokeColor'],
+          'circle-stroke-width': ['get', 'strokeWidth'],
+          'circle-stroke-opacity': 0.9,
+          'circle-opacity': ['get', 'opacity'],
+        },
+      });
+    }
 
     const popup = new maplibregl.Popup({
       closeButton: false,
@@ -253,12 +250,8 @@ export function HospitalLayer({ map }: HospitalLayerProps) {
   useEffect(() => {
     const { fc, lookup } = buildData(Object.values(hospitalsRec), thresholds);
     lookupRef.current = lookup;
-    const apply = () => {
-      const src = map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
-      if (src) src.setData(fc);
-    };
-    if (map.isStyleLoaded() && map.getSource(SOURCE_ID)) apply();
-    else map.once('load', apply);
+    const src = map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
+    if (src) src.setData(fc);
   }, [map, hospitalsRec, thresholds]);
 
   return null;

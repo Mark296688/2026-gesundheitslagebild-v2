@@ -6,10 +6,12 @@ import { AlertList } from './AlertList';
 import { RecommendationList } from './RecommendationList';
 import { HospitalDetailPanel } from './HospitalDetailPanel';
 import { AuditLogPanel } from './AuditLogPanel';
+import { HospitalLoadList } from './HospitalLoadList';
 
-type Tab = 'alerts' | 'recs' | 'hospital' | 'audit';
+type Tab = 'load' | 'alerts' | 'recs' | 'hospital' | 'audit';
 
 const TAB_LABEL: Record<Tab, string> = {
+  load: 'Auslastung',
   alerts: 'Alarme',
   recs: 'Empfehlungen',
   hospital: 'Klinik',
@@ -20,7 +22,7 @@ export function RightPanel() {
   const alerts = useSimStore((s) => s.alerts);
   const recommendations = useSimStore((s) => s.recommendations);
   const selectedHospitalId = useSimStore((s) => s.selectedHospitalId);
-  const [tab, setTab] = useState<Tab>('alerts');
+  const [tab, setTab] = useState<Tab>('load');
 
   // Auto-switch auf Klinik-Tab bei Klinik-Click.
   const effectiveTab =
@@ -47,6 +49,13 @@ export function RightPanel() {
         className="flex"
         style={{ borderBottom: '1px solid var(--border-1)' }}
       >
+        <TabButton
+          active={effectiveTab === 'load'}
+          onClick={() => setTab('load')}
+          testId="tab-load"
+        >
+          {TAB_LABEL.load}
+        </TabButton>
         <TabButton
           active={effectiveTab === 'alerts'}
           onClick={() => setTab('alerts')}
@@ -81,6 +90,7 @@ export function RightPanel() {
       </div>
 
       <div className="flex-1 overflow-auto px-3 pb-3">
+        {effectiveTab === 'load' ? <HospitalLoadList /> : null}
         {effectiveTab === 'alerts' ? <AlertList /> : null}
         {effectiveTab === 'recs' ? <RecommendationList /> : null}
         {effectiveTab === 'hospital' ? <HospitalDetailPanel /> : null}
