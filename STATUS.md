@@ -4,12 +4,12 @@
 
 | Feld | Wert |
 |------|------|
-| Aktive Phase | Phase 5 — Incident-Launcher + MANV-Layer (startet) |
-| Aktueller Schritt | Phase 4 abgeschlossen autonom: Engine, Store, Allocation (Cascade), Detection (6 Regeln), Recommendations (10 Aktionen), Header mit Play/Pause/Speed/Reset/SimClock. 50 Allocation-Tests + 11 Detection-Tests. Gate gruen (87/87 Tests, build/lint/typecheck). |
+| Aktive Phase | Phase 6 — OSRM-Routing + Patientenbewegungen (startet) |
+| Aktueller Schritt | Phase 5 abgeschlossen autonom: 5 MANV-Szenarien + Launcher + IncidentLayer. 110/110 Tests, Gate gruen inkl. Amok-Gate (>= 3 Kliniken > 80 % nach 20 Sim-Min). |
 | Session | 1 |
 | Letztes Update | 2026-04-18 |
 | Blockiert durch | — |
-| Naechste Aktion | Phase 5 Schritt 5.1: `lib/simulation/scenarios.ts` mit 5 MANV-Factory-Funktionen laut SCENARIOS.md |
+| Naechste Aktion | Phase 6 Schritt 6.1: `lib/routing/osrm-client.ts` + `route-cache.ts` (IndexedDB) + RouteLayer mit animierten Pillen |
 
 ## Changelog
 
@@ -38,7 +38,8 @@
 - **07:57** — Phase 1, Schritt 1.3 **(Phase-Abschluss)**: `lib/geo.ts` mit `haversine`, `bboxFromPoints`, `bboxContains`, `centerOf`, Konstanten `MARIENPLATZ_COORDS`, `FLUGHAFEN_MUC_COORDS`, `MUC_REGION_BBOX`. Co-locate Tests `lib/geo.test.ts` mit 12 Faellen. Alle Tests gruen.
 - **08:04** — **Phase 2 abgeschlossen (autonom)**: `scripts/gen-hospitals.ts` parst Excel → 48 Kliniken nach `lib/data/hospitals.json`. `lib/data/hospitalsLoader.ts` typisierter Zugriff. `doc/DECISIONS.md` dokumentiert Spec-Abweichungen (Spalten 1–14, 48 statt 49 Kliniken). 13 Tests. Gate gruen.
 - **08:12** — **Phase 3 abgeschlossen (autonom)**: Map-Basis + Kliniken-Layer (baseline.ts + mapStyle + MapContainer + HospitalLayer + Popup). 37 Tests. Gate gruen.
-- **08:27** — **Phase 4 abgeschlossen (autonom)**: Simulation-Engine-Kern + Store. `lib/simulation/rng.ts` (seededRng). `router.ts` (Kandidaten-Filter, Scoring mit w_dist/w_free/w_tier/w_load, Cascade-Stages, Quota). `allocation.ts` (Triage-First Water-Filling, Cascade A/B/C/D, Stabilisierung, `spawnIncidentPatients`). `detection.ts` (6 Regeln: HospitalSaturation, CapacityTrend, UnassignedPatients, RegionalLoad, PlannedIntakeShortfall, EscalationOpportunity + Dedup/Resolve). `recommendations.ts` (10 MeasureAction-Typen inkl. Rationales, Titles, Effort-Level + Generator aus Alerts). `engine.ts` (tick-Sequenz: advance transport, allocate, discharge, stable-update, snapshot, detection, recommendations). `store.ts` (Zustand-Store mit Actions + setInterval-Tick-Loop, baseline-Belegung bei Init). `components/panels/Header.tsx` (Sim-Uhr, Play/Pause, Speed-Selector 0.5/1/2/5/10×, Reset). Gate: 87/87 Tests (50 allocation + 11 detection + vorhandene), typecheck/lint/build gruen. Dev-Smoke: alle Header-Controls im HTML.
+- **08:27** — **Phase 4 abgeschlossen (autonom)**: Engine-Kern + Store + Header. 87 Tests. Gate gruen.
+- **08:34** — **Phase 5 abgeschlossen (autonom)**: MANV-Szenarien + Launcher + MANV-Layer. `lib/simulation/scenarios.ts` mit 5 Templates (Amok 35, Bus A9 60, S-Bahn Ostbahnhof 180, BMW 70, Allianz 220), `perturb()` fuer Ort-Variation, `RANDOM_PLACES_MUC`-Katalog, `INCIDENT_TYPE_COLOR/LABEL`, `markerDiameterPx`. `components/map/IncidentLayer.tsx` mit maplibregl.Marker (custom HTML-Div), Farbe nach Typ, Zahl zentriert, Hover-Popup mit Label+Casualties+versorgt-Prozent. `components/panels/IncidentLauncher.tsx` im Links-Panel (Scenario-Select, "Ort variieren"-Checkbox, Start-Button, Aktive-Liste). `components/panels/LeftPanel.tsx` als Glass-Wrapper. `app/page.tsx` um IncidentLayer + LeftPanel + IncidentLauncher erweitert. globals.css um `.rl-incident-marker` ergaenzt. 23 neue Tests (scenarios + amok-gate-integration). Gate: **110/110 Tests** inkl. Phase-5-Gate (>= 3 Kliniken > 80 % Auslastung nach 20 Sim-Min nach S-Bahn-Launch). typecheck/lint/build/dev-smoke gruen.
 
 ## Phase-1-Abschluss-Stand
 

@@ -234,3 +234,47 @@ body {
   color: var(--text-primary);
   text-align: right;
 }
+
+/* =============================================================
+ * MANV-Incident-Marker (SCENARIOS.md §4)
+ * ============================================================= */
+
+.rl-incident-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1;
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 6px 14px -4px rgba(16, 24, 40, 0.35);
+  cursor: pointer;
+  transition: transform 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.rl-incident-marker:hover {
+  transform: scale(1.08);
+}
+
+.rl-incident-stats {
+  display: grid;
+  row-gap: 4px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.rl-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.rl-incident-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
