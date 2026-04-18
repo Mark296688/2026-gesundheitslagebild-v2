@@ -4,12 +4,12 @@
 
 | Feld | Wert |
 |------|------|
-| Aktive Phase | Phase 6 — OSRM-Routing + Patientenbewegungen (startet) |
-| Aktueller Schritt | Phase 5 abgeschlossen autonom: 5 MANV-Szenarien + Launcher + IncidentLayer. 110/110 Tests, Gate gruen inkl. Amok-Gate (>= 3 Kliniken > 80 % nach 20 Sim-Min). |
+| Aktive Phase | Phase 7 — PlannedIntake + Relocation-Engine (startet) |
+| Aktueller Schritt | Phase 6 abgeschlossen autonom: OSRM-Client + IndexedDB-Cache + Fallback + RouteLayer mit animierten Pillen. 123/123 Tests, Gate gruen. |
 | Session | 1 |
 | Letztes Update | 2026-04-18 |
 | Blockiert durch | — |
-| Naechste Aktion | Phase 6 Schritt 6.1: `lib/routing/osrm-client.ts` + `route-cache.ts` (IndexedDB) + RouteLayer mit animierten Pillen |
+| Naechste Aktion | Phase 7 Schritt 7.1: `lib/simulation/relocation.ts` + `components/panels/PlannedIntakeForm.tsx` + `components/map/PlannedIntakeLayer.tsx` |
 
 ## Changelog
 
@@ -39,7 +39,8 @@
 - **08:04** — **Phase 2 abgeschlossen (autonom)**: `scripts/gen-hospitals.ts` parst Excel → 48 Kliniken nach `lib/data/hospitals.json`. `lib/data/hospitalsLoader.ts` typisierter Zugriff. `doc/DECISIONS.md` dokumentiert Spec-Abweichungen (Spalten 1–14, 48 statt 49 Kliniken). 13 Tests. Gate gruen.
 - **08:12** — **Phase 3 abgeschlossen (autonom)**: Map-Basis + Kliniken-Layer (baseline.ts + mapStyle + MapContainer + HospitalLayer + Popup). 37 Tests. Gate gruen.
 - **08:27** — **Phase 4 abgeschlossen (autonom)**: Engine-Kern + Store + Header. 87 Tests. Gate gruen.
-- **08:34** — **Phase 5 abgeschlossen (autonom)**: MANV-Szenarien + Launcher + MANV-Layer. `lib/simulation/scenarios.ts` mit 5 Templates (Amok 35, Bus A9 60, S-Bahn Ostbahnhof 180, BMW 70, Allianz 220), `perturb()` fuer Ort-Variation, `RANDOM_PLACES_MUC`-Katalog, `INCIDENT_TYPE_COLOR/LABEL`, `markerDiameterPx`. `components/map/IncidentLayer.tsx` mit maplibregl.Marker (custom HTML-Div), Farbe nach Typ, Zahl zentriert, Hover-Popup mit Label+Casualties+versorgt-Prozent. `components/panels/IncidentLauncher.tsx` im Links-Panel (Scenario-Select, "Ort variieren"-Checkbox, Start-Button, Aktive-Liste). `components/panels/LeftPanel.tsx` als Glass-Wrapper. `app/page.tsx` um IncidentLayer + LeftPanel + IncidentLauncher erweitert. globals.css um `.rl-incident-marker` ergaenzt. 23 neue Tests (scenarios + amok-gate-integration). Gate: **110/110 Tests** inkl. Phase-5-Gate (>= 3 Kliniken > 80 % Auslastung nach 20 Sim-Min nach S-Bahn-Launch). typecheck/lint/build/dev-smoke gruen.
+- **08:34** — **Phase 5 abgeschlossen (autonom)**: MANV-Szenarien + Launcher + MANV-Layer. 23 neue Tests (110 total). Gate gruen.
+- **09:06** — **Phase 6 abgeschlossen (autonom)**: OSRM-Routing + RouteLayer. `lib/routing/route-id.ts` (3-Dezimal-Rundung fuer Cache-Hits). `fallback.ts` (Haversine 50 km/h, 20-Punkt-Polyline). `osrm-client.ts` (fetchRoute mit AbortController-Timeout 8 s, Retry einmal bei 5xx, Rate-Limit 2 Req/s, Test-Hooks `fetchImpl`/`rateLimited`). `route-cache.ts` (IndexedDB via idb + In-Memory-Cache als Fallback). `routing/index.ts` Facade mit `getRouteSync` (synchroner Fallback + async OSRM-Upgrade) und `getRoute` (rein async). `components/map/RouteLayer.tsx` zeichnet MANV-Transport-Linien (durchgezogen blau), Transfer (violett), Planned (gruen), Fallback-Routen gestrichelt. Animierte Dots entlang der Polyline per Tick auf Basis `arrivedAt - durationMin` → Progress `[0..1]`. 13 neue Tests (routing: routeId, interpolate, fallbackRoute, fetchRoute-Mock inkl. Retry/Timeout). Gate: **123/123 Tests**, typecheck/lint/build gruen.
 
 ## Phase-1-Abschluss-Stand
 
