@@ -23,7 +23,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "exceljs": "^4.4.0",
-    "idb": "^8.0.3",
     "lucide-react": "^1.8.0",
     "maplibre-gl": "^5.23.0",
     "next": "^14.2.35",
