@@ -26,6 +26,9 @@ export interface AnnounceIntakeConfig {
   prepWindowMin: number;
   bufferRatio: number;
   arrivalPoint: [number, number];
+  // Wenn true: Intake startet direkt im 'preparing'-Status → Relocation-
+  // Engine verlegt sofort stabile T2/T3 aus Flughafennaehe.
+  autoPrepare?: boolean;
 }
 
 type Store = SimState & {
@@ -228,6 +231,7 @@ export const useSimStore = create<Store>((set, get) => ({
       prepWindowMin,
       bufferRatio,
       arrivalPoint,
+      autoPrepare,
     } = config;
     const firstArrivalAt = s.simTime + prepWindowMin;
     const perFlight = Math.floor(totalPatients / Math.max(1, flightCount));
@@ -246,7 +250,7 @@ export const useSimStore = create<Store>((set, get) => ({
       triageMix,
       needsProfile,
     }));
-    const intake = {
+    const intake: PlannedIntake = {
       id: `PI-${s.simTime}-${s.plannedIntakes.length + 1}`,
       label,
       arrivalPoint,
@@ -255,7 +259,7 @@ export const useSimStore = create<Store>((set, get) => ({
       flights,
       totalPatients,
       prepWindowMin,
-      status: 'announced' as const,
+      status: autoPrepare ? 'preparing' : 'announced',
       bufferRatio,
     };
     set((st) => ({

@@ -172,6 +172,65 @@ export function runRelocationWave(
       started++;
     }
   }
+
+  // Phantom-Baseline-Verlegungen: wenn keine echten stabilen Patienten
+  // (z.B. zu Beginn der Sim, wo nur Baseline-Belegung als Zahl existiert)
+  // reichen, ergaenzen wir synthetische Patienten aus der Baseline-Belegung
+  // der Source-Kliniken. Das macht die Platz-Schaffung sichtbar und
+  // reduziert tatsaechlich occupied in Source → target.
+  for (const source of near) {
+    if (started >= maxTotalThisTick) break;
+    if ((perSourceCount[source.id] ?? 0) >= RELOCATIONS_PER_SOURCE_PER_TICK) continue;
+    const capNB = source.capacity.normal_bett;
+    if (capNB.occupied <= 5) continue; // zu wenig Baseline zum Verlegen
+
+    // Ziel: entfernte Klinik mit viel freier Normal-Kapazitaet.
+    const target = far
+      .filter((h) => h.id !== source.id && freeBeds(h.capacity.normal_bett) > 4)
+      .sort((a, b) => {
+        // Bevorzuge Kliniken mit mehr freien Betten, sekundaer naeher.
+        const freeA = freeBeds(a.capacity.normal_bett);
+        const freeB = freeBeds(b.capacity.normal_bett);
+        if (freeB !== freeA) return freeB - freeA;
+        return haversine(source.coords, a.coords) - haversine(source.coords, b.coords);
+      })[0];
+    if (!target) continue;
+
+    const slot = RELOCATIONS_PER_SOURCE_PER_TICK - (perSourceCount[source.id] ?? 0);
+    const remaining = maxTotalThisTick - started;
+    const n = Math.min(slot, remaining, Math.max(1, Math.floor(capNB.occupied * 0.03)));
+    if (n <= 0) continue;
+
+    const distKm = haversine(source.coords, target.coords);
+    const durMin = (distKm / 55) * 60 + 2;
+
+    for (let i = 0; i < n; i++) {
+      const id = `P-reloc-${intake.id}-${source.id}-${state.simTime}-${i}`;
+      state.patients.push({
+        id,
+        triage: 'T3',
+        needs: {
+          notaufnahme: false,
+          op_saal: false,
+          its_bett: false,
+          normal_bett: true,
+        },
+        treatmentMin: 0,
+        source: 'baseline',
+        sourceRefId: intake.id,
+        spawnedAt: state.simTime,
+        status: 'transferring',
+        assignedHospitalId: source.id,
+        transferTargetHospitalId: target.id,
+        arrivedAt: state.simTime + durMin,
+        isStableForTransfer: true,
+      });
+      source.capacity.normal_bett.occupied = Math.max(0, source.capacity.normal_bett.occupied - 1);
+      started++;
+      perSourceCount[source.id] = (perSourceCount[source.id] ?? 0) + 1;
+    }
+  }
+
   return started;
 }
 

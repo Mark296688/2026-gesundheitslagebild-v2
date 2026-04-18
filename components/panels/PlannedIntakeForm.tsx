@@ -14,6 +14,7 @@ export function PlannedIntakeForm() {
   const [flightIntervalMin, setFlightIntervalMin] = useState(45);
   const [prepWindowMin, setPrepWindowMin] = useState(1440);
   const [bufferRatio, setBufferRatio] = useState(0.15);
+  const [autoPrepare, setAutoPrepare] = useState(true);
 
   const onAnnounce = () => {
     announce({
@@ -24,6 +25,7 @@ export function PlannedIntakeForm() {
       prepWindowMin,
       bufferRatio,
       arrivalPoint: FLUGHAFEN_MUC_COORDS,
+      autoPrepare,
     });
   };
 
@@ -93,6 +95,19 @@ export function PlannedIntakeForm() {
           value={bufferRatio}
           onChange={(e) => setBufferRatio(Number(e.target.value))}
         />
+      </label>
+
+      <label
+        className="flex items-center gap-2 text-caption"
+        style={{ color: 'var(--text-secondary)' }}
+      >
+        <input
+          data-testid="intake-auto-prepare"
+          type="checkbox"
+          checked={autoPrepare}
+          onChange={(e) => setAutoPrepare(e.target.checked)}
+        />
+        <span>Sofort vorbereiten (Relocation startet)</span>
       </label>
 
       <button
