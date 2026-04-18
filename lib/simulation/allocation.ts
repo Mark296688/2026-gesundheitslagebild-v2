@@ -83,10 +83,23 @@ export function allocatePatient(
   if (!loc) return false;
 
   const hospitals = Object.values(ctx.hospitals);
+  // Fuer Intake-Patienten einen Cluster-Malus setzen: Kliniken nah am
+  // Flughafen werden beim Scoring abgewertet, damit die Soldaten sichtbar
+  // in die Muenchner Klinik-Landschaft verteilt werden (lange Fluesse
+  // statt kurzer Cluster-Hopping-Allokationen).
+  const isIntakePatient = patient.source === 'planned-intake';
+  const clusterOpts = isIntakePatient
+    ? {
+        clusterCenter: loc,
+        clusterMalusKm: 20,
+        clusterMalusWeight: 0.45,
+      }
+    : {};
   for (const stage of STAGE_ORDER) {
     const ranked = rankCandidates(patient, loc, hospitals, {
       stage,
       assignedThisTick: ctx.assignedThisTick,
+      ...clusterOpts,
     });
     if (ranked.length === 0) continue;
     const best = ranked[0];

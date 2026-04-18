@@ -182,16 +182,43 @@ export function scoreCandidate(
   hospital: Hospital,
   patient: Patient,
   distanceKm: number,
-  maxDist: number
+  maxDist: number,
+  opts?: {
+    // Cluster-Malus: Kliniken innerhalb `clusterMalusKm` um `clusterCenter`
+    // werden beim Scoring abgewertet. Wird bei planned-intake-Allocation
+    // verwendet, damit Soldaten nicht alle zu den naechsten Flughafen-
+    // Kliniken gehen, sondern breit in die Muenchner Klinik-Landschaft
+    // verteilt werden.
+    clusterCenter?: [number, number];
+    clusterMalusKm?: number;
+    clusterMalusWeight?: number;
+  }
 ): number {
   const pr = primaryResource(patient);
   const free = freeFraction(hospital.capacity[pr]);
   const load = overallLoad(hospital.capacity);
   const tier = tierFitScore(hospital.tier, patient.triage);
   const distTerm = maxDist > 0 ? 1 - distanceKm / maxDist : 1;
-  return (
-    W_DIST * distTerm + W_FREE * free + W_TIER * tier - W_LOAD * load * load
-  );
+  let score =
+    W_DIST * distTerm + W_FREE * free + W_TIER * tier - W_LOAD * load * load;
+
+  if (opts?.clusterCenter && opts.clusterMalusKm) {
+    const distFromCenter = haversine(opts.clusterCenter, hospital.coords);
+    if (distFromCenter < opts.clusterMalusKm) {
+      const malus = opts.clusterMalusWeight ?? 0.35;
+      // Lineare Staerke: direkt am Flughafen = voller Malus, am Rand = 0.
+      const strength = 1 - distFromCenter / opts.clusterMalusKm;
+      score -= malus * strength;
+    }
+  }
+
+  return score;
+}
+
+export interface ScoreOptions {
+  clusterCenter?: [number, number];
+  clusterMalusKm?: number;
+  clusterMalusWeight?: number;
 }
 
 // Liefert eine nach Score absteigend sortierte Kandidatenliste.
@@ -199,7 +226,7 @@ export function rankCandidates(
   patient: Patient,
   patientLocation: [number, number],
   hospitals: Hospital[],
-  opts: CandidateFilterOptions
+  opts: CandidateFilterOptions & ScoreOptions
 ): CandidateResult[] {
   const cutoff = distanceCutoffKm(patient.triage, opts.stage);
   const out: CandidateResult[] = [];
@@ -213,7 +240,11 @@ export function rankCandidates(
     out.push({
       hospital: h,
       distanceKm: dist,
-      score: scoreCandidate(h, patient, dist, cutoff),
+      score: scoreCandidate(h, patient, dist, cutoff, {
+        clusterCenter: opts.clusterCenter,
+        clusterMalusKm: opts.clusterMalusKm,
+        clusterMalusWeight: opts.clusterMalusWeight,
+      }),
     });
   }
   out.sort((a, b) => b.score - a.score);
