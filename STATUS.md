@@ -4,12 +4,12 @@
 
 | Feld | Wert |
 |------|------|
-| Aktive Phase | **Release-Candidate (uebergabereif)** |
-| Aktueller Schritt | Alle Phasen 0–11 abgeschlossen. 143/143 Tests, build/lint/typecheck/dev-smoke gruen. |
-| Session | 1 |
+| Aktive Phase | Live-Polish nach Release-Candidate |
+| Aktueller Schritt | 141/141 Tests gruen, Sim laeuft end-to-end. Ein offener UX-Punkt: User sieht die gruenen Soldaten-Transport-Fluesse vom Flughafen in die Muenchner Kliniken nicht (8 Fixes probiert, Pipeline per Debug-Log verifiziert). Siehe `doc/HANDOVER-INTAKE-FLOW.md`. |
+| Session | 1 (pausiert) |
 | Letztes Update | 2026-04-18 |
-| Blockiert durch | — |
-| Naechste Aktion | Uebergabe. Nachfolgende Arbeit: optionale E2E-Playwright-Tests, Echt-OSRM-Integration in Live-System, mehr Demo-Szenarien. |
+| Blockiert durch | User-Wahrnehmung Intake-Flow — braucht UI-Overlay mit Live-Count als objektive Evidenz, dann gezielte Untersuchung |
+| Naechste Aktion | In neuer Session: `doc/HANDOVER-INTAKE-FLOW.md` lesen, UI-Debug-Overlay `planned-intake/transport: N` einbauen, bei Speed 1x testen |
 
 ## Changelog
 
@@ -46,6 +46,32 @@
 - **09:22** — **Phase 9 abgeschlossen (autonom)**: Timeline mit Fork-Preview. 7 neue Tests (137 total). Gate gruen.
 - **09:30** — **Phase 10 abgeschlossen (autonom)**: Audit-Log + Export + Filter + Demo-Showcase. 6 neue Tests (143 total). Gate gruen.
 - **09:36** — **Phase 11 abgeschlossen (Polish, autonom)**: Keyboard-Shortcuts via `hooks/useKeyboardShortcuts.ts` (Space = Play/Pause, 1-5 = Speed 0.5/1/2/5/10×, R = Reset, D = Demo, Esc = Klinik-Detail schliessen — Eingabefelder werden ausgenommen). `globals.css` erweitert um `:focus-visible` mit 2 px accent-blue Ring + Offset, Transitions 180/120 ms, `prefers-reduced-motion`-Override. ARIA-Labels fuer Header-Buttons (Play/Pause, Reset, Showcase) inkl. Shortcut-Hint. README um Shortcut-Tabelle ergaenzt. Kein Gate-Bruch: 143/143 Tests, typecheck/lint/build gruen.
+
+### Session 1 Teil 2 — Live-Polish + Intake-Visualisierung (2026-04-18, ab ~10:00)
+
+- **Karte war leer**: WebGL1-Fallback + Container-CSS-Spezifitaets-Fix in `MapContainer.tsx` (MapLibre ueberschrieb Tailwind mit `position: relative`, height 0). Inline-Style + ResizeObserver.
+- **OSRM raus**: gesamtes `lib/routing/*` + idb-Dep entfernt, ersetzt durch `lib/flow.ts` (Bezier + Haversine-Dauer).
+- **Flimmern Kliniken**: HospitalLayer gesplittet — Setup only-on-mount + Data-only-Effect.
+- **Betten/Farben statisch**: HospitalLayer nutzt jetzt `state.hospitals` live statt Baseline.
+- **Zustand-Clone-Bug**: `cloneForTick` deep-klont hospitals+capacity+staff+patients+alerts+recs+history+events+intakes — sonst triggert React kein Re-Render.
+- **Incident-Marker stagnierte bei 35**: dynamischer Count = onScene + transport + notYetSpawned.
+- **Staggered Spawn**: `engine.spawnFromIncidents` mit Arrival-Curves (immediate/gauss/plateau).
+- **Recommendations-Neubau**: System-aggregiert statt pro Klinik — 8 aggregate Recs mit Multi-Targets (Surge-Welle, Elektiv stoppen, Personal-Mobilisierung, MANV-umleiten, Nachbar-Alarm, Reserveklinik, Cross-Region, Intake). Cap bei 8 offenen.
+- **Live-Auslastungs-Tab** als Default im RightPanel — Top-12 Kliniken, 4-Balken live, criticalityScore gewichtet (Notaufnahme 1.4×/OP 1.3×).
+- **Detection-Thresholds pro Ressource**: Notaufnahme/OP warn 80/crit 90, ITS 85/95, Normal 90/98.
+- **Timeline**: Stride 5→1 Sim-min, X-Achse von `history[0]` bis `now+240`, Intake-Prognose-Band + Event-Marker (Flug-Landungen, Incident-Starts).
+- **Intake-Engine**: `engine.processPlannedIntakes` — Fluege landen bei `etaMin`, staggered Deplane ueber 10 Sim-min, Status announced→arriving→complete.
+- **Complete-Check-Bug**: Zaehler schloss Phantom-Relocations (`sourceRefId=intake.id`) ein; Filter auf `source='planned-intake'`.
+- **Phantom-Baseline-Relocation**: `runRelocationWave` erzeugt synthetische Patients aus Baseline-Belegung (`source='baseline'`, `status='transferring'`) damit Platz-Schaffung sichtbar ist (violett).
+- **Auto-Prepare-Checkbox** im PlannedIntakeForm — Intake startet direkt im `preparing`.
+- **Flow-Aggregation + Batch-Pillen**: RouteLayer gruppiert Bezier nach `from→to`, Pille mit Patient-Count (BATCH_SIZE=30). Halo-Layer fuer `kind='planned'`. Kraeftigeres Gruen `#00C853`.
+- **Runder Flughafen-Marker** (46×46) mit Pulse-Ring, dynamischer Zahl der noch-zu-versorgenden Soldaten.
+- **Cluster-Malus im Allocator**: `patient.source === 'planned-intake'` → Score-Malus fuer Kliniken im 20 km-Radius um Flughafen.
+- **Repo auf Org**: Branch `rettungsleitstelle-v2` auf `FeuerwehrHackathon2024/2026-gesundheitslagebild` (remote `upstream`, User ist Admin).
+- **Debug-Log eingebaut+entfernt**: `window.__RL_DEBUG_FLOWS=true` liefert Patient-Breakdown. Verifiziert: 150 `planned-intake/transport` waehrend Peak — Pipeline korrekt.
+- **Dev-Server-Zombies**: mehrfach `taskkill //F //IM node.exe` + `rm -rf .next` noetig nach HMR-Schluckauf.
+- **OFFEN — siehe `doc/HANDOVER-INTAKE-FLOW.md`**: User sieht gruene Soldaten-Transport-Fluesse trotz 8 Fixes und verifizierter Pipeline nicht. Naechste Session: UI-Overlay mit Live-Count einbauen (objektive Evidenz), bei Speed 1× testen, ggf. Cluster-Malus aggressiver (40 km, 1.5 weight).
+- **Session pausiert** — Dev-Server und alle Node-Prozesse beendet.
 
 ## Phase-1-Abschluss-Stand
 
