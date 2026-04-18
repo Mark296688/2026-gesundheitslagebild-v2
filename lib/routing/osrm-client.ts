@@ -3,18 +3,35 @@ import type { LngLat } from '@/lib/geo';
 import { routeId } from './route-id';
 
 const DEFAULT_TIMEOUT_MS = 8000;
-const RATE_LIMIT_MIN_INTERVAL_MS = 500; // max 2 Req/s
+const RATE_LIMIT_MIN_INTERVAL_MS = 1200; // max ~0.8 Req/s — Respekt vor public OSRM
+const CIRCUIT_BREAKER_COOLDOWN_MS = 60_000; // nach 429/5xx: 60 s nur Fallback
 const DEFAULT_BASE_URL =
   process.env.NEXT_PUBLIC_OSRM_URL ?? 'https://router.project-osrm.org';
 
-let lastCallAt = 0;
-async function rateLimit(): Promise<void> {
-  const now = Date.now();
-  const wait = Math.max(0, lastCallAt + RATE_LIMIT_MIN_INTERVAL_MS - now);
-  if (wait > 0) {
-    await new Promise((r) => setTimeout(r, wait));
-  }
-  lastCallAt = Date.now();
+let circuitOpenUntil = 0;
+
+// Strict serialisierte Rate-Limit-Queue: nacheinander, jede neue Anfrage
+// wartet bis die vorherige MIN_INTERVAL_MS passiert ist. Promise-Chain als
+// Mutex-Ersatz — sicher gegen parallele Bursts.
+let rateQueue: Promise<void> = Promise.resolve();
+function rateLimit(): Promise<void> {
+  const gate = rateQueue.then(
+    () => new Promise<void>((r) => setTimeout(r, RATE_LIMIT_MIN_INTERVAL_MS))
+  );
+  rateQueue = gate.catch(() => undefined);
+  return gate;
+}
+
+export function isCircuitOpen(now = Date.now()): boolean {
+  return now < circuitOpenUntil;
+}
+
+export function tripCircuit(): void {
+  circuitOpenUntil = Date.now() + CIRCUIT_BREAKER_COOLDOWN_MS;
+}
+
+export function resetCircuit(): void {
+  circuitOpenUntil = 0;
 }
 
 interface OSRMResponse {
@@ -41,7 +58,11 @@ export async function fetchRoute(
   to: LngLat,
   opts: FetchRouteOptions = {}
 ): Promise<Route> {
+  // Circuit-Breaker vor und nach rateLimit pruefen — so werden auch parallel
+  // wartende Requests nach dem ersten 429 kurzgeschlossen.
+  if (isCircuitOpen()) throw new Error('OSRM circuit open');
   if (opts.rateLimited !== false) await rateLimit();
+  if (isCircuitOpen()) throw new Error('OSRM circuit open');
   const base = opts.baseUrl ?? DEFAULT_BASE_URL;
   const timeout = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const fetchFn = opts.fetchImpl ?? fetch;
@@ -61,6 +82,8 @@ export async function fetchRoute(
     if (!res.ok) {
       const err = new Error(`OSRM ${res.status}`);
       (err as Error & { status?: number }).status = res.status;
+      // 429 oder 5xx → Circuit-Breaker oeffnen (60 s nur Fallback).
+      if (res.status === 429 || res.status >= 500) tripCircuit();
       throw err;
     }
     return (await res.json()) as OSRMResponse;
@@ -72,8 +95,8 @@ export async function fetchRoute(
       data = await tryOnce();
     } catch (err: unknown) {
       const status = (err as { status?: number })?.status;
-      // Retry einmal bei 5xx oder Network-Error; nicht bei 4xx.
-      if (status != null && status >= 400 && status < 500) throw err;
+      // Retry einmal bei 5xx oder Network-Error; nicht bei 4xx (ausser 429).
+      if (status != null && status >= 400 && status < 500 && status !== 429) throw err;
       data = await tryOnce();
     }
     const route = data.routes?.[0];

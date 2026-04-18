@@ -6,7 +6,7 @@ import type { Route } from '@/lib/types';
 import type { LngLat } from '@/lib/geo';
 import { routeId } from './route-id';
 import { fallbackRoute } from './fallback';
-import { fetchRoute, type FetchRouteOptions } from './osrm-client';
+import { fetchRoute, isCircuitOpen, type FetchRouteOptions } from './osrm-client';
 import {
   getCachedRoute,
   putCachedRoute,
@@ -14,9 +14,13 @@ import {
   putMemRoute,
 } from './route-cache';
 
+// In-flight Requests pro routeId — deduplicates parallele Aufrufe.
+const inflight = new Set<string>();
+
 // Liefert synchron einen Fallback und startet asynchron ein Upgrade auf eine
 // echte OSRM-Route. Das Callback `onUpgrade` wird nur bei erfolgreichem Upgrade
-// aufgerufen (source === 'osrm').
+// aufgerufen (source === 'osrm'). Bei offenem Circuit-Breaker (429/5xx) wird
+// der Fallback genutzt, ohne OSRM erneut zu fragen.
 export function getRouteSync(
   from: LngLat,
   to: LngLat,
@@ -27,7 +31,15 @@ export function getRouteSync(
   if (mem) return mem;
   const fb = fallbackRoute(from, to);
   putMemRoute(fb);
-  // Async upgrade
+
+  // Bei offenem Circuit: kein async Upgrade starten.
+  if (isCircuitOpen()) return fb;
+
+  // Request-Deduplizierung: wenn bereits eine Anfrage fuer diese routeId
+  // laeuft, keine zweite starten.
+  if (inflight.has(id)) return fb;
+  inflight.add(id);
+
   (async () => {
     try {
       const db = await getCachedRoute(id);
@@ -41,7 +53,10 @@ export function getRouteSync(
       await putCachedRoute(real);
       onUpgrade?.(real);
     } catch {
-      // Kein Upgrade → Fallback bleibt aktiv.
+      // Kein Upgrade → Fallback bleibt aktiv. Der Circuit-Breaker wurde
+      // ggf. vom Client bereits gesetzt.
+    } finally {
+      inflight.delete(id);
     }
   })();
   return fb;

@@ -1,7 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { routeId } from '@/lib/routing/route-id';
 import { fallbackRoute, interpolate } from '@/lib/routing/fallback';
-import { fetchRoute } from '@/lib/routing/osrm-client';
+import { fetchRoute, resetCircuit } from '@/lib/routing/osrm-client';
+
+beforeEach(() => {
+  resetCircuit();
+});
 
 describe('routeId', () => {
   it('rundet auf 3 Dezimalstellen', () => {
