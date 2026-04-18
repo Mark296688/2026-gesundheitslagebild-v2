@@ -32,6 +32,8 @@ const PADDING_Y = 14;
 export function TimelineStrip() {
   const simTime = useSimStore((s) => s.simTime);
   const history = useSimStore((s) => s.occupancyHistory);
+  const plannedIntakes = useSimStore((s) => s.plannedIntakes);
+  const incidents = useSimStore((s) => s.incidents);
   const hoveredRecId = useSimStore((s) => s.hoveredRecommendationId);
   const [highlighted, setHighlighted] = useState<CurveKey | null>(null);
   const [preview, setPreview] = useState<ForkPreviewResult | null>(null);
@@ -65,7 +67,48 @@ export function TimelineStrip() {
     };
   }, [hoveredRecId, simTime]);
 
-  const { width, height, curves, tsStart, tsEnd } = useTimelineGeom(history, preview);
+  const { width, height, curves, tsStart, tsEnd, xFor } = useTimelineGeom(history, preview);
+
+  // Event-Marker: MANV-Starts (Incident.startedAt) und Intake-Ankuendigungen
+  // (announcedAt) + Flug-Landungen (flight.etaMin). Nur rendern wenn im
+  // Zeitfenster.
+  const eventMarkers = useMemo(() => {
+    const out: Array<{
+      key: string;
+      t: number;
+      kind: 'incident' | 'intake-announced' | 'flight';
+      label: string;
+      color: string;
+    }> = [];
+    for (const inc of incidents) {
+      out.push({
+        key: `inc-${inc.id}`,
+        t: inc.startedAt,
+        kind: 'incident',
+        label: `${inc.label} (${inc.estimatedCasualties})`,
+        color: 'var(--accent-red)',
+      });
+    }
+    for (const intake of plannedIntakes) {
+      out.push({
+        key: `intake-ann-${intake.id}`,
+        t: intake.announcedAt,
+        kind: 'intake-announced',
+        label: `${intake.label} angekuendigt (${intake.totalPatients} Pat.)`,
+        color: 'var(--accent-green)',
+      });
+      for (const f of intake.flights) {
+        out.push({
+          key: `flight-${intake.id}-${f.idx}`,
+          t: f.etaMin,
+          kind: 'flight',
+          label: `Flug ${f.idx} landet (${f.patientCount} Pat.)`,
+          color: 'var(--accent-green)',
+        });
+      }
+    }
+    return out.filter((m) => m.t >= tsStart && m.t <= tsEnd);
+  }, [incidents, plannedIntakes, tsStart, tsEnd]);
 
   return (
     <footer
@@ -124,6 +167,55 @@ export function TimelineStrip() {
           fill="var(--accent-red)"
           fillOpacity={0.06}
         />
+
+        {/* Intake-Prognose-Baender: zartes Gruen von Ankuendigung bis
+            firstArrivalAt; macht die Vorlaufzeit sichtbar. */}
+        {plannedIntakes.map((intake) => {
+          const x1 = xFor(intake.announcedAt);
+          const x2 = xFor(intake.firstArrivalAt);
+          if (x2 <= x1) return null;
+          return (
+            <rect
+              key={`intake-band-${intake.id}`}
+              x={x1}
+              y={PADDING_Y}
+              width={x2 - x1}
+              height={height - PADDING_Y * 2}
+              fill="var(--accent-green)"
+              fillOpacity={0.07}
+            />
+          );
+        })}
+
+        {/* Event-Marker: vertikale Linien mit Label */}
+        {eventMarkers.map((m) => {
+          const x = xFor(m.t);
+          const isFuture = m.t > (history.length ? history[history.length - 1].simTime : 0);
+          return (
+            <g key={m.key}>
+              <line
+                x1={x}
+                x2={x}
+                y1={PADDING_Y}
+                y2={height - PADDING_Y}
+                stroke={m.color}
+                strokeWidth={m.kind === 'flight' ? 2 : 1.5}
+                strokeDasharray={isFuture ? '3,3' : undefined}
+                opacity={0.85}
+              />
+              <circle
+                cx={x}
+                cy={PADDING_Y}
+                r={m.kind === 'flight' ? 4 : 3}
+                fill={m.color}
+                stroke="#FFFFFF"
+                strokeWidth={1}
+              />
+              <title>{`T+${m.t}: ${m.label}`}</title>
+            </g>
+          );
+        })}
+
         {/* Scrubber bei Jetzt */}
         {curves.nowX != null ? (
           <line
@@ -271,6 +363,7 @@ function useTimelineGeom(
       height,
       tsStart,
       tsEnd,
+      xFor,
       curves: {
         history: historyPolylines,
         previewWith,

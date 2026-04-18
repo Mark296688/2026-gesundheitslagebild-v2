@@ -127,6 +127,72 @@ function pushOccupancy(state: SimState): void {
   }
 }
 
+// Verarbeitet PlannedIntakes: Flug-Landungen spawnen Patienten am
+// arrivalPoint, Status-Uebergaenge announced→arriving→complete. Laut
+// SIMULATION.md §3.3 landen Fluege deterministisch bei etaMin.
+function processPlannedIntakes(state: SimState): void {
+  for (const intake of state.plannedIntakes) {
+    if (intake.status === 'complete' || intake.status === 'cancelled') continue;
+
+    // Automatische Status-Uebergaenge:
+    // announced → arriving wenn firstArrivalAt erreicht (auch wenn nicht
+    //   vorbereitet — Realitaet: die Fluege landen trotzdem).
+    // preparing → arriving wenn firstArrivalAt erreicht.
+    if (
+      (intake.status === 'announced' || intake.status === 'preparing') &&
+      state.simTime >= intake.firstArrivalAt
+    ) {
+      intake.status = 'arriving';
+    }
+
+    // Fuer alle Fluege, deren etaMin bereits erreicht ist und fuer die noch
+    // nicht alle Patienten gespawnt wurden: spawne den Rest.
+    let spawnedForIntake = state.patients.filter(
+      (p) => p.sourceRefId === intake.id
+    ).length;
+    const totalSoFarTarget = intake.flights
+      .filter((f) => state.simTime >= f.etaMin)
+      .reduce((s, f) => s + f.patientCount, 0);
+    const toSpawn = totalSoFarTarget - spawnedForIntake;
+    if (toSpawn > 0) {
+      // Needs-Profile und TriageMix des juengsten gelandeten Flugs nehmen.
+      const lastFlight = [...intake.flights]
+        .filter((f) => state.simTime >= f.etaMin)
+        .pop();
+      if (lastFlight) {
+        const rng = seededRng(state.seed ^ intake.announcedAt ^ spawnedForIntake);
+        const fresh = spawnIncidentPatients(
+          intake.id,
+          toSpawn,
+          lastFlight.triageMix,
+          lastFlight.needsProfile,
+          state.simTime,
+          rng,
+          spawnedForIntake
+        );
+        // Markiere als planned-intake-Source statt incident.
+        for (const p of fresh) {
+          p.source = 'planned-intake';
+        }
+        state.patients.push(...fresh);
+        spawnedForIntake += toSpawn;
+      }
+    }
+
+    // Wenn alle erwarteten Patienten gespawnt sind UND keine mehr onScene →
+    // status complete.
+    if (
+      intake.status === 'arriving' &&
+      spawnedForIntake >= intake.totalPatients
+    ) {
+      const stillOnScene = state.patients.some(
+        (p) => p.sourceRefId === intake.id && p.status === 'onScene'
+      );
+      if (!stillOnScene) intake.status = 'complete';
+    }
+  }
+}
+
 function spawnFromIncidents(state: SimState): void {
   for (const inc of state.incidents) {
     const tRel = state.simTime - inc.startedAt;
@@ -155,8 +221,9 @@ function spawnFromIncidents(state: SimState): void {
 export function tick(state: SimState): SimState {
   state.simTime += 1;
 
-  // Neue Patienten aus Incident-Curves pro Tick.
+  // Neue Patienten aus Incident-Curves und Flight-Landungen pro Tick.
   spawnFromIncidents(state);
+  processPlannedIntakes(state);
 
   advanceTransport(state);
 
@@ -165,6 +232,10 @@ export function tick(state: SimState): SimState {
   allocateBatch(state.patients, {
     hospitals: state.hospitals,
     incidents: state.incidents.map((i) => ({ id: i.id, location: i.location })),
+    intakes: state.plannedIntakes.map((i) => ({
+      id: i.id,
+      arrivalPoint: i.arrivalPoint,
+    })),
     simTime: state.simTime,
     assignedThisTick,
   });

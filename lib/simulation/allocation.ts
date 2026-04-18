@@ -27,6 +27,9 @@ const STAGE_ORDER: CascadeStage[] = ['none', 'distance', 'quota', 'load', 'surge
 export interface AllocationContext {
   hospitals: Record<string, Hospital>;
   incidents: Array<{ id: string; location: [number, number] }>;
+  // Planned-Intake-Locations (Flughafen-Koordinaten etc.) fuer Patienten
+  // deren sourceRefId auf eine PlannedIntake zeigt.
+  intakes?: Array<{ id: string; arrivalPoint: [number, number] }>;
   simTime: number;
   // Assign-Counter pro Tick (verhindert Quota-Ueberschreitung).
   assignedThisTick: Record<string, number>;
@@ -40,7 +43,10 @@ function patientLocation(
     const inc = ctx.incidents.find((i) => i.id === patient.sourceRefId);
     if (inc) return inc.location;
   }
-  // Baseline / planned-intake: ggf. extern gesetzt
+  if (patient.source === 'planned-intake' && patient.sourceRefId && ctx.intakes) {
+    const intake = ctx.intakes.find((i) => i.id === patient.sourceRefId);
+    if (intake) return intake.arrivalPoint;
+  }
   return null;
 }
 
