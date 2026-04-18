@@ -153,9 +153,16 @@ function processPlannedIntakes(state: SimState): void {
     let spawnedForIntake = state.patients.filter(
       (p) => p.sourceRefId === intake.id && p.source === 'planned-intake'
     ).length;
-    const totalSoFarTarget = intake.flights
-      .filter((f) => state.simTime >= f.etaMin)
-      .reduce((s, f) => s + f.patientCount, 0);
+    // Gestaffelte Entladung: ein Flug "entlaedt" seine Patienten linear
+    // ueber DEPLANE_DURATION_MIN, damit der Transport-Fluss zu den Kliniken
+    // kontinuierlich laeuft und visuell verfolgbar bleibt.
+    const DEPLANE_DURATION_MIN = 10;
+    const totalSoFarTarget = intake.flights.reduce((s, f) => {
+      if (state.simTime < f.etaMin) return s;
+      const tRel = state.simTime - f.etaMin;
+      const frac = Math.min(1, tRel / DEPLANE_DURATION_MIN);
+      return s + Math.floor(f.patientCount * frac);
+    }, 0);
     const toSpawn = totalSoFarTarget - spawnedForIntake;
     if (toSpawn > 0) {
       const lastFlight = [...intake.flights]

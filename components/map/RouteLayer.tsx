@@ -18,6 +18,7 @@ interface LineProps {
   count: number;
   midLng: number;
   midLat: number;
+  kind: string;
 }
 
 interface DotProps {
@@ -33,13 +34,14 @@ interface LabelProps {
 const SRC_LINES = 'rl-routes-lines';
 const SRC_DOTS = 'rl-routes-dots';
 const SRC_LABELS = 'rl-routes-labels';
+const LAYER_LINES_HALO = 'rl-routes-lines-halo';
 const LAYER_LINES = 'rl-routes-lines';
 const LAYER_DOTS = 'rl-routes-dots';
 const LAYER_LABELS = 'rl-routes-labels';
 
 const COLOR_MANV = '#007AFF';
 const COLOR_TRANSFER = '#AF52DE';
-const COLOR_PLANNED = '#34C759';
+const COLOR_PLANNED = '#00C853'; // kraeftiges Gruen, deutlicher als Mint-Default
 
 type FlowKind = 'manv' | 'transfer' | 'planned';
 
@@ -106,6 +108,24 @@ export function RouteLayer({ map }: RouteLayerProps) {
           data: { type: 'FeatureCollection', features: [] },
         });
       }
+      // Halo-Layer fuer Soldaten-/Intake-Fluesse: breite, transparente Linie
+      // unter der Hauptlinie → der Fluss ist auch neben dichten Marker-
+      // Clustern am Flughafen sofort erkennbar.
+      if (!map.getLayer(LAYER_LINES_HALO)) {
+        map.addLayer({
+          id: LAYER_LINES_HALO,
+          type: 'line',
+          source: SRC_LINES,
+          filter: ['==', ['get', 'kind'], 'planned'],
+          paint: {
+            'line-color': ['get', 'color'],
+            'line-width': ['+', ['get', 'width'], 10],
+            'line-opacity': 0.18,
+            'line-blur': 2,
+          },
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+        });
+      }
       if (!map.getLayer(LAYER_LINES)) {
         map.addLayer({
           id: LAYER_LINES,
@@ -114,7 +134,7 @@ export function RouteLayer({ map }: RouteLayerProps) {
           paint: {
             'line-color': ['get', 'color'],
             'line-width': ['get', 'width'],
-            'line-opacity': 0.8,
+            'line-opacity': 0.9,
           },
           layout: { 'line-cap': 'round', 'line-join': 'round' },
         });
@@ -196,8 +216,10 @@ export function RouteLayer({ map }: RouteLayerProps) {
       const poly = flowPath(g.from, g.to);
       const color = colorForKind(g.kind);
       const count = g.patients.length;
-      // Dicke: 2.5 + 1.5*sqrt(count), gedeckelt bei 10.
-      const width = Math.min(10, 2.5 + 1.5 * Math.sqrt(count));
+      // Dicke: 2.5 + 1.5*sqrt(count), Soldaten-Fluesse +1.5 extra damit sie
+      // neben den dichten Marker-Clustern am Flughafen klar sichtbar sind.
+      const kindBoost = g.kind === 'planned' ? 1.5 : 0;
+      const width = Math.min(12, 2.5 + 1.5 * Math.sqrt(count) + kindBoost);
 
       lines.push({
         type: 'Feature',
@@ -207,6 +229,7 @@ export function RouteLayer({ map }: RouteLayerProps) {
           color,
           width,
           count,
+          kind: g.kind,
           midLng: poly[Math.floor(poly.length / 2)][0],
           midLat: poly[Math.floor(poly.length / 2)][1],
         },

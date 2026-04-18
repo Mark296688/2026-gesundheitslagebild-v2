@@ -34,7 +34,7 @@ export function MapLegend() {
         Patientenfluesse
       </div>
       <LegendRow color="#007AFF" label="MANV-Transport zu Klinik" />
-      <LegendRow color="#34C759" label="Soldaten vom Flughafen" />
+      <LegendRow color="#00C853" label="Soldaten vom Flughafen" />
       <LegendRow color="#AF52DE" label="Verlegung zwischen Kliniken" />
       <div
         style={{
