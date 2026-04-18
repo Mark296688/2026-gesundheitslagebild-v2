@@ -278,3 +278,45 @@ body {
   flex-direction: column;
   gap: 6px;
 }
+
+/* =============================================================
+ * Planned-Intake-Marker (Flughafen)
+ * ============================================================= */
+
+.rl-intake-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px 4px;
+  border-radius: var(--radius-md);
+  background: var(--accent-green);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 8px 16px -6px rgba(16, 24, 40, 0.35);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: transform 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.rl-intake-marker[data-intake-status='preparing'] {
+  background: var(--accent-blue);
+}
+
+.rl-intake-marker[data-intake-status='arriving'] {
+  background: var(--accent-orange);
+}
+
+.rl-intake-marker:hover {
+  transform: scale(1.05);
+}
+
+.rl-intake-plane {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.rl-intake-count {
+  font-size: 11px;
+  font-weight: 600;
+}

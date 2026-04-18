@@ -12,6 +12,7 @@ import {
 } from './detection';
 import { generateRecommendations, mergeRecommendations } from './recommendations';
 import { effectiveTotal } from './router';
+import { relocationStep } from './relocation';
 
 const HISTORY_STRIDE = 5;
 const HISTORY_CAPACITY = 288; // 24 h bei 5-Min-Stride
@@ -135,6 +136,10 @@ export function tick(state: SimState): SimState {
 
   releaseDischarged(state);
   updateStableFlags(state);
+
+  // Relocation-Welle: aktive Intake im Status 'preparing' verlegt
+  // stabile T2/T3 aus flughafennahen Kliniken in entferntere Haeuser.
+  relocationStep(state);
 
   pushOccupancy(state);
 

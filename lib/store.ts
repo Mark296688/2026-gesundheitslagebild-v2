@@ -16,6 +16,16 @@ import { seededRng } from '@/lib/simulation/rng';
 
 const DEFAULT_SEED = 42;
 
+export interface AnnounceIntakeConfig {
+  label: string;
+  totalPatients: number;
+  flightCount: number;
+  flightIntervalMin: number;
+  prepWindowMin: number;
+  bufferRatio: number;
+  arrivalPoint: [number, number];
+}
+
 type Store = SimState & {
   tick: () => void;
   pause: () => void;
@@ -24,6 +34,7 @@ type Store = SimState & {
   reset: () => void;
   launchIncident: (incident: Omit<Incident, 'startedAt'>) => void;
   launchPlannedIntake: (intake: PlannedIntake) => void;
+  announcePlannedIntake: (config: AnnounceIntakeConfig) => string;
   executeRecommendation: (recommendationId: string) => void;
 };
 
@@ -124,25 +135,78 @@ export const useSimStore = create<Store>((set, get) => ({
     set((s) => ({ plannedIntakes: [...s.plannedIntakes, intake] }));
   },
 
+  announcePlannedIntake: (config) => {
+    const s = get();
+    const {
+      label,
+      totalPatients,
+      flightCount,
+      flightIntervalMin,
+      prepWindowMin,
+      bufferRatio,
+      arrivalPoint,
+    } = config;
+    const firstArrivalAt = s.simTime + prepWindowMin;
+    const perFlight = Math.floor(totalPatients / Math.max(1, flightCount));
+    const remainder = totalPatients - perFlight * flightCount;
+    const triageMix = { T1: 0.25, T2: 0.45, T3: 0.25, T4: 0.05 };
+    const needsProfile = {
+      opShare: 0.55,
+      itsShare: 0.3,
+      notaufnahmeShare: 0.05,
+      normalBedShare: 0.1,
+    };
+    const flights = Array.from({ length: flightCount }, (_, i) => ({
+      idx: i + 1,
+      etaMin: firstArrivalAt + i * flightIntervalMin,
+      patientCount: perFlight + (i === flightCount - 1 ? remainder : 0),
+      triageMix,
+      needsProfile,
+    }));
+    const intake = {
+      id: `PI-${s.simTime}-${s.plannedIntakes.length + 1}`,
+      label,
+      arrivalPoint,
+      announcedAt: s.simTime,
+      firstArrivalAt,
+      flights,
+      totalPatients,
+      prepWindowMin,
+      status: 'announced' as const,
+      bufferRatio,
+    };
+    set((st) => ({ plannedIntakes: [...st.plannedIntakes, intake] }));
+    return intake.id;
+  },
+
   executeRecommendation: (recommendationId: string) => {
     const s = get();
     const rec = s.recommendations.find((r) => r.id === recommendationId);
     if (!rec) return;
-    // Minimale MVP-Ausfuehrung: markiere als executed + applyMeasure (wo moeglich).
     const updatedRecs = s.recommendations.map((r) =>
-      r.id === recommendationId ? { ...r, executedAt: s.simTime } : r
+      r.id === recommendationId ? { ...r, executedAt: s.simTime, executable: false } : r
     );
     const hospitals = { ...s.hospitals };
-    applyMeasure(hospitals, rec);
-    set({ recommendations: updatedRecs, hospitals });
+    const plannedIntakes = s.plannedIntakes.map((i) => ({ ...i }));
+    applyMeasure(hospitals, plannedIntakes, rec);
+    set({ recommendations: updatedRecs, hospitals, plannedIntakes });
   },
 }));
 
 function applyMeasure(
   hospitals: Record<string, Hospital>,
+  plannedIntakes: PlannedIntake[],
   rec: Recommendation
 ): void {
   switch (rec.action) {
+    case 'prepare-reception': {
+      const intakeId = rec.intakeRefId;
+      if (!intakeId) return;
+      const idx = plannedIntakes.findIndex((i) => i.id === intakeId);
+      if (idx === -1) return;
+      plannedIntakes[idx] = { ...plannedIntakes[idx], status: 'preparing' };
+      return;
+    }
     case 'activate-surge': {
       for (const id of rec.targetHospitalIds) {
         const h = hospitals[id];

@@ -4,12 +4,12 @@
 
 | Feld | Wert |
 |------|------|
-| Aktive Phase | Phase 7 — PlannedIntake + Relocation-Engine (startet) |
-| Aktueller Schritt | Phase 6 abgeschlossen autonom: OSRM-Client + IndexedDB-Cache + Fallback + RouteLayer mit animierten Pillen. 123/123 Tests, Gate gruen. |
+| Aktive Phase | Phase 8 — Right-Panel: Alerts + Recommendations + Hospital-Detail (startet) |
+| Aktueller Schritt | Phase 7 abgeschlossen autonom: Relocation-Engine + PlannedIntakeForm + PlannedIntakeLayer. 130/130 Tests, Gate gruen. |
 | Session | 1 |
 | Letztes Update | 2026-04-18 |
 | Blockiert durch | — |
-| Naechste Aktion | Phase 7 Schritt 7.1: `lib/simulation/relocation.ts` + `components/panels/PlannedIntakeForm.tsx` + `components/map/PlannedIntakeLayer.tsx` |
+| Naechste Aktion | Phase 8 Schritt 8.1: `components/panels/RightPanel.tsx` mit Tabs Alarme/Empfehlungen/Klinik/Audit + `AlertList` + `RecommendationList` |
 
 ## Changelog
 
@@ -40,7 +40,8 @@
 - **08:12** — **Phase 3 abgeschlossen (autonom)**: Map-Basis + Kliniken-Layer (baseline.ts + mapStyle + MapContainer + HospitalLayer + Popup). 37 Tests. Gate gruen.
 - **08:27** — **Phase 4 abgeschlossen (autonom)**: Engine-Kern + Store + Header. 87 Tests. Gate gruen.
 - **08:34** — **Phase 5 abgeschlossen (autonom)**: MANV-Szenarien + Launcher + MANV-Layer. 23 neue Tests (110 total). Gate gruen.
-- **09:06** — **Phase 6 abgeschlossen (autonom)**: OSRM-Routing + RouteLayer. `lib/routing/route-id.ts` (3-Dezimal-Rundung fuer Cache-Hits). `fallback.ts` (Haversine 50 km/h, 20-Punkt-Polyline). `osrm-client.ts` (fetchRoute mit AbortController-Timeout 8 s, Retry einmal bei 5xx, Rate-Limit 2 Req/s, Test-Hooks `fetchImpl`/`rateLimited`). `route-cache.ts` (IndexedDB via idb + In-Memory-Cache als Fallback). `routing/index.ts` Facade mit `getRouteSync` (synchroner Fallback + async OSRM-Upgrade) und `getRoute` (rein async). `components/map/RouteLayer.tsx` zeichnet MANV-Transport-Linien (durchgezogen blau), Transfer (violett), Planned (gruen), Fallback-Routen gestrichelt. Animierte Dots entlang der Polyline per Tick auf Basis `arrivedAt - durationMin` → Progress `[0..1]`. 13 neue Tests (routing: routeId, interpolate, fallbackRoute, fetchRoute-Mock inkl. Retry/Timeout). Gate: **123/123 Tests**, typecheck/lint/build gruen.
+- **09:06** — **Phase 6 abgeschlossen (autonom)**: OSRM-Client + IndexedDB-Cache + Fallback + RouteLayer mit animierten Pillen. 13 neue Tests. Gate gruen.
+- **09:11** — **Phase 7 abgeschlossen (autonom)**: PlannedIntake + Relocation-Engine. `lib/simulation/relocation.ts` (computeTargetFreeBeds, hospitalsNear/Far, runRelocationWave mit Per-Source-Cap=4 und T3-vor-T2-Sortierung, relocationStep fuer Multi-Intake). Engine-Tick ruft `relocationStep` auf. `store.ts` erweitert um `announcePlannedIntake` (baut Fluege aus Config) und `applyMeasure` fuer `prepare-reception` (setzt intake.status 'preparing'). `components/panels/PlannedIntakeForm.tsx` (Label, 4 Nummern-Felder, Buffer-Slider, Ankuendigen-Button, Live-Liste). `components/map/PlannedIntakeLayer.tsx` (Flughafen-Marker mit Plane-Unicode + Patientenzahl + Farbe nach Status). globals.css um `.rl-intake-marker` ergaenzt. 7 neue Tests (aggregateNeedsProfile, computeTargetFreeBeds, hospitalsNear/Far, runRelocationWave + Per-Source-Cap, Multi-Intake). Gate: **130/130 Tests**, typecheck/lint/build gruen.
 
 ## Phase-1-Abschluss-Stand
 
