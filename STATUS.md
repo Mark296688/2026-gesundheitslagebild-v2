@@ -4,12 +4,12 @@
 
 | Feld | Wert |
 |------|------|
-| Aktive Phase | Phase 4 — Simulation-Engine-Kern + Store (startet) |
-| Aktueller Schritt | Phase 3 abgeschlossen autonom (Map + 48 Kliniken-Layer + Hover-Tooltip + Baseline-Auslastung-Helper). Gate gruen: 37/37 Tests, build, lint, typecheck, dev-Smoke HTTP 200 mit Map-Container + Header + lang=de. |
+| Aktive Phase | Phase 5 — Incident-Launcher + MANV-Layer (startet) |
+| Aktueller Schritt | Phase 4 abgeschlossen autonom: Engine, Store, Allocation (Cascade), Detection (6 Regeln), Recommendations (10 Aktionen), Header mit Play/Pause/Speed/Reset/SimClock. 50 Allocation-Tests + 11 Detection-Tests. Gate gruen (87/87 Tests, build/lint/typecheck). |
 | Session | 1 |
 | Letztes Update | 2026-04-18 |
 | Blockiert durch | — |
-| Naechste Aktion | Phase 4 Schritt 4.1: `lib/store.ts` mit Zustand-Store (simState + Actions: tick, pause, resume, setSpeed, reset, launchIncident, launchPlannedIntake, executeRecommendation) |
+| Naechste Aktion | Phase 5 Schritt 5.1: `lib/simulation/scenarios.ts` mit 5 MANV-Factory-Funktionen laut SCENARIOS.md |
 
 ## Changelog
 
@@ -37,7 +37,8 @@
 - **07:51** — Phase 1, Schritt 1.2: `lib/data/resources.ts` mit kanonischer `RESOURCE_TYPES`-Reihenfolge, `RESOURCE_DISPLAY` (kurz) und `RESOURCE_DISPLAY_LONG` (lang) und `RESOURCE_COLOR` als CSS-var-Mapping (chart-4/3/2 + accent-green). Typecheck gruen.
 - **07:57** — Phase 1, Schritt 1.3 **(Phase-Abschluss)**: `lib/geo.ts` mit `haversine`, `bboxFromPoints`, `bboxContains`, `centerOf`, Konstanten `MARIENPLATZ_COORDS`, `FLUGHAFEN_MUC_COORDS`, `MUC_REGION_BBOX`. Co-locate Tests `lib/geo.test.ts` mit 12 Faellen. Alle Tests gruen.
 - **08:04** — **Phase 2 abgeschlossen (autonom)**: `scripts/gen-hospitals.ts` parst Excel → 48 Kliniken nach `lib/data/hospitals.json`. `lib/data/hospitalsLoader.ts` typisierter Zugriff. `doc/DECISIONS.md` dokumentiert Spec-Abweichungen (Spalten 1–14, 48 statt 49 Kliniken). 13 Tests. Gate gruen.
-- **08:12** — **Phase 3 abgeschlossen (autonom)**: Map-Basis + Kliniken-Layer. `lib/simulation/baseline.ts` (deterministische 65–80 %-Auslastung + Farb/Radius-Helpers, 12 Tests). `components/map/mapStyle.ts` (CartoDB Positron Raster). `components/map/MapContainer.tsx` (MapLibre Client-Component mit NavigationControl). `components/map/HospitalLayer.tsx` (48 Klinik-Punkte als Circle-Layer + Halo; Hover-Popup mit Name, Tier, 4 Ressourcen-Balken und Betten-Zahlen). `app/globals.css` um `.rl-popup` / `.rl-tooltip` / `.rl-bar-*`-Styles ergaenzt (Liquid-Glass gemaess DESIGN.md §5.4). `app/page.tsx` mit Header-Platzhalter + Map (`'use client'` wegen MapLibre/window). `@types/geojson` installiert. Dev-Smoke: HTTP 200, Map-Container + Header + Phase-3-Badge im HTML. Gate: 37/37 Tests, build, lint, typecheck gruen.
+- **08:12** — **Phase 3 abgeschlossen (autonom)**: Map-Basis + Kliniken-Layer (baseline.ts + mapStyle + MapContainer + HospitalLayer + Popup). 37 Tests. Gate gruen.
+- **08:27** — **Phase 4 abgeschlossen (autonom)**: Simulation-Engine-Kern + Store. `lib/simulation/rng.ts` (seededRng). `router.ts` (Kandidaten-Filter, Scoring mit w_dist/w_free/w_tier/w_load, Cascade-Stages, Quota). `allocation.ts` (Triage-First Water-Filling, Cascade A/B/C/D, Stabilisierung, `spawnIncidentPatients`). `detection.ts` (6 Regeln: HospitalSaturation, CapacityTrend, UnassignedPatients, RegionalLoad, PlannedIntakeShortfall, EscalationOpportunity + Dedup/Resolve). `recommendations.ts` (10 MeasureAction-Typen inkl. Rationales, Titles, Effort-Level + Generator aus Alerts). `engine.ts` (tick-Sequenz: advance transport, allocate, discharge, stable-update, snapshot, detection, recommendations). `store.ts` (Zustand-Store mit Actions + setInterval-Tick-Loop, baseline-Belegung bei Init). `components/panels/Header.tsx` (Sim-Uhr, Play/Pause, Speed-Selector 0.5/1/2/5/10×, Reset). Gate: 87/87 Tests (50 allocation + 11 detection + vorhandene), typecheck/lint/build gruen. Dev-Smoke: alle Header-Controls im HTML.
 
 ## Phase-1-Abschluss-Stand
 
