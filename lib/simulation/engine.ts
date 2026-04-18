@@ -3,7 +3,12 @@
 
 import type { Patient, ResourceType, SimState } from '@/lib/types';
 import { RESOURCE_TYPES } from '@/lib/data/resources';
-import { allocateBatch } from './allocation';
+import {
+  allocateBatch,
+  cumulativeArrival,
+  spawnIncidentPatients,
+} from './allocation';
+import { seededRng } from './rng';
 import {
   alertKeys,
   mergeAlertsWithDedup,
@@ -14,8 +19,10 @@ import { generateRecommendations, mergeRecommendations } from './recommendations
 import { effectiveTotal } from './router';
 import { relocationStep } from './relocation';
 
-const HISTORY_STRIDE = 5;
-const HISTORY_CAPACITY = 288; // 24 h bei 5-Min-Stride
+// Feinere Timeline: 1 Sim-min pro History-Punkt → sichtbarer Verlauf auch
+// bei kurzen MANV-Szenarien (15–60 Min).
+const HISTORY_STRIDE = 1;
+const HISTORY_CAPACITY = 1440; // 24 h bei 1-Min-Stride
 
 function snapshot(state: SimState): SimState['occupancyHistory'][number] {
   const totals: Record<ResourceType, { total: number; occupied: number }> = {
@@ -120,8 +127,36 @@ function pushOccupancy(state: SimState): void {
   }
 }
 
+function spawnFromIncidents(state: SimState): void {
+  for (const inc of state.incidents) {
+    const tRel = state.simTime - inc.startedAt;
+    if (tRel < 0) continue;
+    const frac = cumulativeArrival(inc.arrivalCurve, tRel, inc.durationMin);
+    const targetCount = Math.floor(frac * inc.estimatedCasualties);
+    const currentCount = state.patients.filter(
+      (p) => p.sourceRefId === inc.id
+    ).length;
+    const toSpawn = targetCount - currentCount;
+    if (toSpawn <= 0) continue;
+    const rng = seededRng(state.seed ^ inc.startedAt ^ currentCount);
+    const fresh = spawnIncidentPatients(
+      inc.id,
+      toSpawn,
+      inc.triageMix,
+      inc.needsProfile,
+      state.simTime,
+      rng,
+      currentCount
+    );
+    state.patients.push(...fresh);
+  }
+}
+
 export function tick(state: SimState): SimState {
   state.simTime += 1;
+
+  // Neue Patienten aus Incident-Curves pro Tick.
+  spawnFromIncidents(state);
 
   advanceTransport(state);
 

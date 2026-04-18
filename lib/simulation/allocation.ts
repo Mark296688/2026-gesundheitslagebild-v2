@@ -1,7 +1,7 @@
 // Allocation-Engine: Triage-First Water-Filling mit Cascade.
 // Gemaess SIMULATION.md §4. Pure Funktionen, state wird in-place mutiert.
 
-import type { Hospital, Patient, ResourceType, Triage } from '@/lib/types';
+import type { ArrivalCurve, Hospital, Patient, ResourceType, Triage } from '@/lib/types';
 import { RESOURCE_TYPES } from '@/lib/data/resources';
 import { haversine } from '@/lib/geo';
 import {
@@ -119,6 +119,58 @@ export function allocateBatch(
   return { allocated, failed };
 }
 
+// Kumulative Ankunft entlang der Arrival-Curve, Zeit `tRel` in Minuten seit
+// Incident-Start, Gesamt-Dauer `durationMin`. Gibt Fraktion [0..1] zurueck.
+// - 'immediate': 60 % in ersten 3 Min, Rest bis 8 Min.
+// - 'plateau': lineare Aufteilung ueber durationMin.
+// - 'gauss': Normalverteilung um Mitte mit sigma = durationMin/4.
+export function cumulativeArrival(
+  curve: ArrivalCurve,
+  tRel: number,
+  durationMin: number
+): number {
+  if (tRel <= 0) return 0;
+  const dur = Math.max(1, durationMin);
+  switch (curve) {
+    case 'immediate': {
+      if (tRel >= 8) return 1;
+      // 2-stufig: schnelles Anlaufen, dann Sattigung.
+      if (tRel <= 3) return (tRel / 3) * 0.6;
+      return 0.6 + ((tRel - 3) / 5) * 0.4;
+    }
+    case 'plateau': {
+      return Math.min(1, tRel / dur);
+    }
+    case 'gauss': {
+      const mu = dur / 2;
+      const sigma = dur / 4;
+      const z = (tRel - mu) / (Math.SQRT2 * sigma);
+      // Standard erfc-Naeherung.
+      const cdf = 0.5 * (1 + erf(z));
+      return Math.max(0, Math.min(1, cdf));
+    }
+    default:
+      return Math.min(1, tRel / dur);
+  }
+}
+
+// Abramowitz/Stegun-Naeherung fuer die Error-Funktion (erf). Genau genug fuer
+// Arrival-Curve-Verteilungen.
+function erf(x: number): number {
+  const sign = x < 0 ? -1 : 1;
+  const ax = Math.abs(x);
+  const a1 = 0.254829592;
+  const a2 = -0.284496736;
+  const a3 = 1.421413741;
+  const a4 = -1.453152027;
+  const a5 = 1.061405429;
+  const p = 0.3275911;
+  const t = 1 / (1 + p * ax);
+  const y =
+    1 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-ax * ax);
+  return sign * y;
+}
+
 // Helper fuer Test-Setups / manuelle Sim-Steuerung: baut aus einem Incident
 // und Triage-Mix einen Patientenstapel.
 export function spawnIncidentPatients(
@@ -132,7 +184,8 @@ export function spawnIncidentPatients(
     normalBedShare: number;
   },
   simTime: number,
-  rng: () => number
+  rng: () => number,
+  startIdx = 0
 ): Patient[] {
   const patients: Patient[] = [];
   for (let i = 0; i < casualties; i++) {
@@ -156,7 +209,7 @@ export function spawnIncidentPatients(
             ? 90 + rng() * 60
             : 30 + rng() * 30;
     patients.push({
-      id: `P-${incidentId}-${String(i + 1).padStart(4, '0')}`,
+      id: `P-${incidentId}-${String(startIdx + i + 1).padStart(4, '0')}`,
       triage,
       needs,
       treatmentMin: Math.round(treatmentMin),

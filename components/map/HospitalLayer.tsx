@@ -9,17 +9,16 @@ import type {
 import maplibregl from 'maplibre-gl';
 import type { Feature, FeatureCollection, Point } from 'geojson';
 import type { Capacity, Hospital, ResourceType } from '@/lib/types';
-import { getHospitals } from '@/lib/data/hospitalsLoader';
 import { useSimStore } from '@/lib/store';
 import {
   RESOURCE_TYPES,
   RESOURCE_DISPLAY,
 } from '@/lib/data/resources';
 import {
-  baselineCapacity,
   overallOccupancyRatio,
   tierRadiusPx,
 } from '@/lib/simulation/baseline';
+import { effectiveTotal } from '@/lib/simulation/router';
 
 // MapLibre stringifyt verschachtelte Properties verlustbehaftet. Daher nur
 // primitive Werte als Feature-Property; die komplexen Display-Daten liegen
@@ -53,26 +52,27 @@ function ratioColorHex(ratio: number): string {
   return '#34C759';
 }
 
+function ratioOf(c: Capacity): number {
+  const eff = effectiveTotal(c);
+  if (eff === 0) return 0;
+  return Math.max(0, Math.min(1, c.occupied / eff));
+}
+
 function buildData(
   hospitals: Hospital[],
-  seed: number,
   thresholds: { min: number; max: number }
 ): { fc: FeatureCollection<Point, HospitalFeatureProps>; lookup: Map<string, HospitalDisplay> } {
   const features: Feature<Point, HospitalFeatureProps>[] = [];
   const lookup = new Map<string, HospitalDisplay>();
   for (const h of hospitals) {
-    const cap = baselineCapacity(h, seed);
+    const cap = h.capacity;
     const ratio = overallOccupancyRatio(cap);
     const inRange = ratio >= thresholds.min && ratio <= thresholds.max;
     const ratios: Record<ResourceType, number> = {
-      notaufnahme:
-        cap.notaufnahme.total === 0 ? 0 : cap.notaufnahme.occupied / cap.notaufnahme.total,
-      op_saal:
-        cap.op_saal.total === 0 ? 0 : cap.op_saal.occupied / cap.op_saal.total,
-      its_bett:
-        cap.its_bett.total === 0 ? 0 : cap.its_bett.occupied / cap.its_bett.total,
-      normal_bett:
-        cap.normal_bett.total === 0 ? 0 : cap.normal_bett.occupied / cap.normal_bett.total,
+      notaufnahme: ratioOf(cap.notaufnahme),
+      op_saal: ratioOf(cap.op_saal),
+      its_bett: ratioOf(cap.its_bett),
+      normal_bett: ratioOf(cap.normal_bett),
     };
     features.push({
       type: 'Feature',
@@ -139,16 +139,15 @@ function escapeHtml(s: string): string {
 
 interface HospitalLayerProps {
   map: MaplibreMap;
-  seed?: number;
 }
 
-export function HospitalLayer({ map, seed = 42 }: HospitalLayerProps) {
+export function HospitalLayer({ map }: HospitalLayerProps) {
+  const hospitalsRec = useSimStore((s) => s.hospitals);
   const thresholds = useSimStore((s) => s.filters.bedThresholds);
   const lookupRef = useRef<Map<string, HospitalDisplay>>(new Map());
 
   useEffect(() => {
-    const hospitals = getHospitals();
-    const { fc, lookup } = buildData(hospitals, seed, thresholds);
+    const { fc, lookup } = buildData(Object.values(hospitalsRec), thresholds);
     lookupRef.current = lookup;
 
     const ensureSourceAndLayers = () => {
@@ -252,7 +251,7 @@ export function HospitalLayer({ map, seed = 42 }: HospitalLayerProps) {
       if (map.getLayer(LAYER_ID_HALO)) map.removeLayer(LAYER_ID_HALO);
       if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
     };
-  }, [map, seed, thresholds]);
+  }, [map, hospitalsRec, thresholds]);
 
   return null;
 }

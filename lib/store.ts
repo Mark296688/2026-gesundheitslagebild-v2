@@ -11,7 +11,6 @@ import type {
 import { getHospitals } from '@/lib/data/hospitalsLoader';
 import { baselineCapacity } from '@/lib/simulation/baseline';
 import { tick } from '@/lib/simulation/engine';
-import { spawnIncidentPatients } from '@/lib/simulation/allocation';
 import { seededRng } from '@/lib/simulation/rng';
 import { applyMeasureToState } from '@/lib/simulation/measures';
 import { mkEvent } from '@/lib/audit/event-log';
@@ -87,13 +86,52 @@ function clearTickLoop() {
   tickHandle = null;
 }
 
+// Engine mutiert state in-place (Performance). Damit Zustand/React
+// Re-Renders ausloest, muessen wir vor dem Tick neue Refs fuer alle
+// mutierten Sub-Objekte erzeugen.
+function cloneForTick(s: SimState): SimState {
+  return {
+    ...s,
+    hospitals: Object.fromEntries(
+      Object.entries(s.hospitals).map(([id, h]) => [
+        id,
+        {
+          ...h,
+          capacity: {
+            notaufnahme: { ...h.capacity.notaufnahme },
+            op_saal: { ...h.capacity.op_saal },
+            its_bett: { ...h.capacity.its_bett },
+            normal_bett: { ...h.capacity.normal_bett },
+          },
+          staff: { ...h.staff },
+        },
+      ])
+    ),
+    patients: s.patients.map((p) => ({ ...p, needs: { ...p.needs } })),
+    incidents: [...s.incidents],
+    plannedIntakes: s.plannedIntakes.map((i) => ({ ...i })),
+    alerts: [...s.alerts],
+    recommendations: [...s.recommendations],
+    occupancyHistory: [...s.occupancyHistory],
+    events: [...s.events],
+    routes: { ...s.routes },
+    forkPreviewCache: { ...s.forkPreviewCache },
+    filters: {
+      ...s.filters,
+      bedThresholds: { ...s.filters.bedThresholds },
+      triage: { ...s.filters.triage },
+    },
+  };
+}
+
 export const useSimStore = create<Store>((set, get) => ({
   ...initialState(),
 
   tick: () => {
     const s = get();
-    const next = tick({ ...s, hospitals: { ...s.hospitals } });
-    set({ ...next });
+    const clone = cloneForTick(s);
+    tick(clone);
+    set(clone);
   },
 
   pause: () => {
@@ -148,22 +186,15 @@ export const useSimStore = create<Store>((set, get) => ({
 
   launchIncident: (incidentPartial) => {
     const s = get();
-    const rng = seededRng(s.seed ^ s.simTime);
     const incident: Incident = {
       ...incidentPartial,
       startedAt: s.simTime,
     };
-    const patients = spawnIncidentPatients(
-      incident.id,
-      incident.estimatedCasualties,
-      incident.triageMix,
-      incident.needsProfile,
-      s.simTime,
-      rng
-    );
+    // Patienten werden NICHT sofort gespawnt — die Engine verteilt sie pro
+    // Tick gemaess ArrivalCurve (SIMULATION.md §3.2). Visuell: onScene-
+    // Count steigt sichtbar an, Patienten fliessen gestaffelt.
     set({
       incidents: [...s.incidents, incident],
-      patients: [...s.patients, ...patients],
       events: [
         ...s.events,
         mkEvent({

@@ -36,32 +36,40 @@ function pushAlert(
   });
 }
 
-// §7.1 HospitalSaturation: pro Klinik pro Ressource.
+// §7.1 HospitalSaturation: pro Klinik EIN Alert.
+// Schwerste Einzelressource bestimmt Severity, Detail listet betroffene Ressourcen.
 export function ruleHospitalSaturation(
   hospitals: Hospital[],
   simTime: number
 ): Alert[] {
   const alerts: Alert[] = [];
   for (const h of hospitals) {
+    let peakRatio = 0;
+    const hotResources: string[] = [];
     for (const r of RESOURCE_TYPES) {
       const cap = h.capacity[r];
       const eff = effectiveTotal(cap);
       if (eff === 0) continue;
       const ratio = cap.occupied / eff;
-      let severity: AlertSeverity | null = null;
-      if (ratio >= 0.95) severity = 'critical';
-      else if (ratio >= 0.85) severity = 'warn';
-      if (!severity) continue;
-      pushAlert(alerts, {
-        ruleName: 'HospitalSaturation',
-        severity,
-        scope: 'hospital',
-        scopeRef: h.id,
-        firedAt: simTime,
-        title: `${h.name}: ${RESOURCE_DISPLAY_LONG[r]} ${Math.round(ratio * 100)} %`,
-        detail: `Belegt ${cap.occupied} von ${eff} (${r})`,
-      });
+      if (ratio > peakRatio) peakRatio = ratio;
+      if (ratio >= 0.85) hotResources.push(RESOURCE_DISPLAY_LONG[r]);
     }
+    let severity: AlertSeverity | null = null;
+    if (peakRatio >= 0.95) severity = 'critical';
+    else if (peakRatio >= 0.85) severity = 'warn';
+    if (!severity) continue;
+    pushAlert(alerts, {
+      ruleName: 'HospitalSaturation',
+      severity,
+      scope: 'hospital',
+      scopeRef: h.id,
+      firedAt: simTime,
+      title: `${h.name}: ${Math.round(peakRatio * 100)} %`,
+      detail:
+        hotResources.length === 1
+          ? `${hotResources[0]} ueberlastet`
+          : `${hotResources.length} Ressourcen kritisch: ${hotResources.join(', ')}`,
+    });
   }
   return alerts;
 }
