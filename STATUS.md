@@ -4,12 +4,12 @@
 
 | Feld | Wert |
 |------|------|
-| Aktive Phase | **Release-Candidate** — alle Phasen 0–11 durch |
-| Aktueller Schritt | Phase 11 abgeschlossen: Keyboard-Shortcuts (Space/1-5/R/D/Esc), Fokus-Ringe, prefers-reduced-motion, ARIA-Labels im Header. 143/143 Tests, Gate gruen. |
+| Aktive Phase | **Release-Candidate (uebergabereif)** |
+| Aktueller Schritt | Alle Phasen 0–11 abgeschlossen. 143/143 Tests, build/lint/typecheck/dev-smoke gruen. |
 | Session | 1 |
 | Letztes Update | 2026-04-18 |
 | Blockiert durch | — |
-| Naechste Aktion | `chore: release-candidate`-Commit. Uebergabereif. |
+| Naechste Aktion | Uebergabe. Nachfolgende Arbeit: optionale E2E-Playwright-Tests, Echt-OSRM-Integration in Live-System, mehr Demo-Szenarien. |
 
 ## Changelog
 
@@ -82,6 +82,20 @@ Fuer autonomes Weiterarbeiten:
 - `/loop /next-phase` (dynamisch, Claude pacet selbst) — arbeitet Phase fuer Phase, respektiert Gates
 - Stop-Hook pflegt "Letztes Update" in STATUS.md und `.claude/session.log`
 - Gate erreicht oder Blocker → Loop meldet und stoppt, wartet auf Freigabe
+
+## Uebergabe-Stand (Release-Candidate)
+
+| Kennzahl | Wert |
+|---|---|
+| Phasen abgeschlossen | 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 |
+| Test-Faelle gruen | 143 / 143 |
+| Test-Dateien | 11 (unit + integration) |
+| Build | ✓ 373 kB First Load JS |
+| Lint | ✓ 0 Fehler, 0 Warnings |
+| Typecheck | ✓ strict |
+| Dev-Smoke | ✓ HTTP 200, alle Panels + Layer sichtbar |
+| Phase-5-Gate | ✓ S-Bahn → ≥3 Kliniken > 80 % Auslastung in 20 Sim-Min |
+| Phase-10-Gate | ✓ Demo-Showcase laeuft deterministisch, Export JSONL wohlgeformt |
 
 ## Offene Aktionen
 - [ ] Phase 0 — Repo-Bootstrap (git init, pnpm init, Pakete, tsconfig, shadcn init, Next.js-Shell, Testrunner, STATUS-Skelett)
