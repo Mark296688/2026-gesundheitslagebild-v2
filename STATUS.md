@@ -5,11 +5,11 @@
 | Feld | Wert |
 |------|------|
 | Aktive Phase | Phase 1 — Datenmodell & Typen |
-| Aktueller Schritt | Schritt 1.1 erledigt (`lib/types.ts` mit allen Typen aus `doc/DATA_MODEL.md` §1–§11; Typecheck gruen). Als naechstes Schritt 1.2: `lib/data/resources.ts` (ResourceType-Enum + Display-Namen + Farb-Mapping) |
+| Aktueller Schritt | Schritt 1.2 erledigt (`lib/data/resources.ts`: RESOURCE_TYPES-Reihenfolge, Kurz- und Lang-Display, CSS-var-Farb-Mapping; typecheck gruen). Als naechstes Schritt 1.3 (Gate-relevant): `lib/geo.ts` mit Haversine + BBox-Helpers + FLUGHAFEN_MUC_COORDS + Unit-Tests fuer Haversine |
 | Session | 1 |
 | Letztes Update | 2026-04-18 |
 | Blockiert durch | — |
-| Naechste Aktion | Schritt 1.2: `lib/data/resources.ts` |
+| Naechste Aktion | Schritt 1.3: `lib/geo.ts` (Haversine, BBox-Helpers, MUC-Flughafen-Konstante) + Unit-Tests (Gate: Haversine Muenchen–Flughafen ≈ 28 km) |
 
 ## Changelog
 
@@ -34,6 +34,7 @@
 - **01:15** — Phase 0, Schritt 0.6 **(Phase-Abschluss)**: `pnpm dev`-Smoke-Check via curl gegen `http://localhost:3000/` → HTTP 200, Titel "Rettungsleitstelle — MANV/Grosslage-Dashboard", `<html lang="de">`, Shell-Text "Rettungsleitstelle — Bootstrap-Phase", Stylesheet verlinkt, keine Console-Errors. shadcn manuell aufgesetzt (non-interaktiv, kontrollierter): `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tailwindcss-animate` installiert; `components.json` gemaess DESIGN.md §10; `lib/utils.ts` mit `cn()`; `tailwind.config.ts` Plugin `tailwindcss-animate` eingehaengt. `README.md`-Skelett mit Stack-, Scripts-, Dokumentations- und Architektur-Leitplanken. Gate-Rerun: alle vier Checks gruen.
 
 - **07:46** — Phase 1 (nach User-Freigabe) Schritt 1.1: `lib/types.ts` mit allen Domain-Typen laut DATA_MODEL.md — Grundtypen (Triage, ResourceType, PatientStatus, HospitalTier), Patient, Capacity, Hospital (+Address/Flags/Staff/Escalation), Incident (+NeedsProfile), PlannedIntake (+FlightArrival/Status), Alert, Recommendation (+MeasureAction/ExpectedImpact), Event (+Kinds/Scope), Route, SimState (+OccupancyHistoryEntry/SimFilters). ForkPreviewResult als Phase-9-TODO-Stub. Typecheck gruen.
+- **07:51** — Phase 1, Schritt 1.2: `lib/data/resources.ts` mit kanonischer `RESOURCE_TYPES`-Reihenfolge, `RESOURCE_DISPLAY` (kurz) und `RESOURCE_DISPLAY_LONG` (lang) und `RESOURCE_COLOR` als CSS-var-Mapping (chart-4/3/2 + accent-green). Typecheck gruen.
 
 ## Phase-0-Abschluss-Stand
 
