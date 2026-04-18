@@ -4,12 +4,12 @@
 
 | Feld | Wert |
 |------|------|
-| Aktive Phase | **Phase 0 — Gate erreicht**, wartet auf Freigabe fuer Phase 1 |
-| Aktueller Schritt | Alle Schritte 0.1–0.6 erledigt. Gate komplett gruen: `pnpm dev` ✓ (200 OK, Titel gerendert, lang=de, Shell sichtbar) · `pnpm build` ✓ · `pnpm typecheck` ✓ · `pnpm lint` ✓ · `pnpm test` ✓ |
+| Aktive Phase | Phase 1 — Datenmodell & Typen |
+| Aktueller Schritt | Schritt 1.1 erledigt (`lib/types.ts` mit allen Typen aus `doc/DATA_MODEL.md` §1–§11; Typecheck gruen). Als naechstes Schritt 1.2: `lib/data/resources.ts` (ResourceType-Enum + Display-Namen + Farb-Mapping) |
 | Session | 1 |
 | Letztes Update | 2026-04-18 |
-| Blockiert durch | User-Freigabe fuer Phase 1 |
-| Naechste Aktion | Nach Freigabe: Phase 1 Schritt 1 — `lib/types.ts` mit allen Typen aus `doc/DATA_MODEL.md` (`Patient`, `Hospital`, `Capacity`, `Incident`, `PlannedIntake`, `FlightArrival`, `Event`, `Recommendation`, `Alert`) |
+| Blockiert durch | — |
+| Naechste Aktion | Schritt 1.2: `lib/data/resources.ts` |
 
 ## Changelog
 
@@ -32,6 +32,8 @@
 - **01:02** — Phase 0, Schritt 0.4: App-Shell angelegt: `app/layout.tsx` (html lang=de, Metadata), `app/page.tsx` (Placeholder-Text, Liquid-Glass-konformes Styling via `text-caption` + CSS-var), `app/globals.css` (komplette DESIGN.md §1-Tokens + shadcn-HSL-Mapping + backdrop-filter-Fallback). Begleitende Fixes: ESLint-Downgrade auf 8 (Next 14 kompatibel), `globals.d.ts` mit `declare module '*.css'` fuer TS-6-side-effect-Import. Gate-Stand: `pnpm build`, `pnpm typecheck`, `pnpm lint` alle gruen; `pnpm test` faellt noch weil Testrunner nicht konfiguriert (Schritt 0.5).
 - **01:08** — Phase 0, Schritt 0.5: Testrunner-Setup. `vitest.config.ts` (jsdom, globals, `@`-Alias, include-Globs fuer tests/unit|integration + lib + components), `vitest.setup.ts` mit `@testing-library/jest-dom/vitest`, `playwright.config.ts` (chromium, webServer `pnpm dev`, 1920x1080, retries in CI). `package.json` test-Script auf `--passWithNoTests`. Phase-0-Gate technisch gruen (build/typecheck/lint/test alle ✓).
 - **01:15** — Phase 0, Schritt 0.6 **(Phase-Abschluss)**: `pnpm dev`-Smoke-Check via curl gegen `http://localhost:3000/` → HTTP 200, Titel "Rettungsleitstelle — MANV/Grosslage-Dashboard", `<html lang="de">`, Shell-Text "Rettungsleitstelle — Bootstrap-Phase", Stylesheet verlinkt, keine Console-Errors. shadcn manuell aufgesetzt (non-interaktiv, kontrollierter): `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tailwindcss-animate` installiert; `components.json` gemaess DESIGN.md §10; `lib/utils.ts` mit `cn()`; `tailwind.config.ts` Plugin `tailwindcss-animate` eingehaengt. `README.md`-Skelett mit Stack-, Scripts-, Dokumentations- und Architektur-Leitplanken. Gate-Rerun: alle vier Checks gruen.
+
+- **07:46** — Phase 1 (nach User-Freigabe) Schritt 1.1: `lib/types.ts` mit allen Domain-Typen laut DATA_MODEL.md — Grundtypen (Triage, ResourceType, PatientStatus, HospitalTier), Patient, Capacity, Hospital (+Address/Flags/Staff/Escalation), Incident (+NeedsProfile), PlannedIntake (+FlightArrival/Status), Alert, Recommendation (+MeasureAction/ExpectedImpact), Event (+Kinds/Scope), Route, SimState (+OccupancyHistoryEntry/SimFilters). ForkPreviewResult als Phase-9-TODO-Stub. Typecheck gruen.
 
 ## Phase-0-Abschluss-Stand
 
