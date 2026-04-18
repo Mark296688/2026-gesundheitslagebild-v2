@@ -4,12 +4,12 @@
 
 | Feld | Wert |
 |------|------|
-| Aktive Phase | Phase 9 — Timeline mit Fork-Preview (startet) |
-| Aktueller Schritt | Phase 8 abgeschlossen autonom: RightPanel mit 4 Tabs + AlertList + RecommendationList mit Impact-Chips + HospitalDetailPanel mit Sparkline + AuditLogPanel. Klinik-Click im Store → Detail-Panel-Tab aktiv. 130/130 Tests, Gate gruen. |
+| Aktive Phase | Phase 10 — Audit-Log + Export + Filter + Demo-Showcase (startet) |
+| Aktueller Schritt | Phase 9 abgeschlossen autonom: Fork-Preview (SimState-Clone + Tick-Loop + Diff), TimelineStrip mit 4 Kurven + Hover-Highlight + gestrichelte Preview-Overlay, applyMeasureToState extrahiert. 137/137 Tests, Gate gruen. |
 | Session | 1 |
 | Letztes Update | 2026-04-18 |
 | Blockiert durch | — |
-| Naechste Aktion | Phase 9 Schritt 9.1: `components/panels/TimelineStrip.tsx` + `lib/simulation/fork-preview.ts` + `ForkPreviewOverlay.tsx` |
+| Naechste Aktion | Phase 10 Schritt 10.1: `lib/audit/event-log.ts` + `event-types.ts` + AuditPanel mit JSONL-Export + Filter + Demo-Showcase-Button |
 
 ## Changelog
 
@@ -42,7 +42,8 @@
 - **08:34** — **Phase 5 abgeschlossen (autonom)**: MANV-Szenarien + Launcher + MANV-Layer. 23 neue Tests (110 total). Gate gruen.
 - **09:06** — **Phase 6 abgeschlossen (autonom)**: OSRM-Client + IndexedDB-Cache + Fallback + RouteLayer mit animierten Pillen. 13 neue Tests. Gate gruen.
 - **09:11** — **Phase 7 abgeschlossen (autonom)**: PlannedIntake + Relocation-Engine. 7 neue Tests (130 total). Gate gruen.
-- **09:16** — **Phase 8 abgeschlossen (autonom)**: Right-Panel mit 4 Tabs. `RightPanel.tsx` (Tabs Alarme/Empfehlungen/Klinik/Audit, Unterstrich-Indikator, Pill mit Counter fuer ungeresolvte Alerts + offene Recs, Klinik-Tab disabled wenn keine Auswahl). `AlertList.tsx` (sortiert nach unresolved-state + severity + time, Farbe nach severity, resolved abgedimmt). `RecommendationList.tsx` (Karten mit Titel, Rationale, Impact-Chips `+N Betten` / `+N min` / `N Pat. umgeleitet` / `N pp`, Aktivieren-Button, Ausgefuehrt-Sektion). `HospitalDetailPanel.tsx` (Name, Tier, Adresse, Gesamt-Auslastung mit Farbcode, SVG-Sparkline aus occupancyHistory, 4-Balken-Kapazitaet mit Surge-Flag, Personal, Escalation-Status). `AuditLogPanel.tsx` (Liste ausgefuehrter Maßnahmen mit Zeitstempel). Store um `selectedHospitalId` + `selectHospital` erweitert. `HospitalLayer` triggert `selectHospital` bei Klick. Gate: typecheck/lint/build/130 Tests gruen.
+- **09:16** — **Phase 8 abgeschlossen (autonom)**: Right-Panel mit 4 Tabs. 130 Tests. Gate gruen.
+- **09:22** — **Phase 9 abgeschlossen (autonom)**: Timeline mit Fork-Preview. `lib/simulation/measures.ts` als einzige Source-of-Truth fuer applyMeasureToState (aus Store herausgezogen, DRY). `lib/simulation/fork-preview.ts` mit `computeForkPreview` (Deep-Clone ausgewaehlter SimState-Teile, tick-Schleife N Minuten, Snapshot alle 5 Min, diff berechnet peakLoad/crit/bedsFreed). `ForkPreviewResult` + `TimelinePoint` in `lib/types.ts` konkretisiert (Phase-1-TODO geschlossen). `components/panels/TimelineStrip.tsx` 160 px, 4 Kurven (Gesamt/ITS/OP/Notaufnahme) aus occupancyHistory, Hover-Highlight dimmt andere Kurven, Scrubber-Linie bei "Jetzt", Kritisch-Zone ≥95 % als Background-Band, gestrichelte Fork-Preview-Overlay bei Hover auf Recommendation-Card (150 ms Debounce, Cache via `forkPreviewCache`). Store um `hoveredRecommendationId` + `hoverRecommendation`-Action erweitert. RecommendationCard ruft hover/leave auf. 7 neue Tests (fork-preview: applyMeasureToState fuer surge/cancel-elective/prepare-reception/reserve, computeForkPreview-Kurvenlaenge+Immutability+peakLoadDelta). Gate: typecheck/lint/build/137 Tests gruen.
 
 ## Phase-1-Abschluss-Stand
 

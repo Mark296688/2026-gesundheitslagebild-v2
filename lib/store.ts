@@ -13,6 +13,7 @@ import { baselineCapacity } from '@/lib/simulation/baseline';
 import { tick } from '@/lib/simulation/engine';
 import { spawnIncidentPatients } from '@/lib/simulation/allocation';
 import { seededRng } from '@/lib/simulation/rng';
+import { applyMeasureToState } from '@/lib/simulation/measures';
 
 const DEFAULT_SEED = 42;
 
@@ -37,6 +38,7 @@ type Store = SimState & {
   announcePlannedIntake: (config: AnnounceIntakeConfig) => string;
   executeRecommendation: (recommendationId: string) => void;
   selectHospital: (id: string | undefined) => void;
+  hoverRecommendation: (id: string | undefined) => void;
 };
 
 function initialState(seed = DEFAULT_SEED): SimState {
@@ -184,75 +186,44 @@ export const useSimStore = create<Store>((set, get) => ({
     set({ selectedHospitalId: id });
   },
 
+  hoverRecommendation: (id) => {
+    set({ hoveredRecommendationId: id });
+  },
+
   executeRecommendation: (recommendationId: string) => {
     const s = get();
     const rec = s.recommendations.find((r) => r.id === recommendationId);
     if (!rec) return;
+    const next: SimState = {
+      ...s,
+      hospitals: Object.fromEntries(
+        Object.entries(s.hospitals).map(([id, h]) => [
+          id,
+          {
+            ...h,
+            capacity: {
+              notaufnahme: { ...h.capacity.notaufnahme },
+              op_saal: { ...h.capacity.op_saal },
+              its_bett: { ...h.capacity.its_bett },
+              normal_bett: { ...h.capacity.normal_bett },
+            },
+            staff: { ...h.staff },
+          },
+        ])
+      ),
+      plannedIntakes: s.plannedIntakes.map((i) => ({ ...i })),
+    };
+    applyMeasureToState(next, rec);
     const updatedRecs = s.recommendations.map((r) =>
       r.id === recommendationId ? { ...r, executedAt: s.simTime, executable: false } : r
     );
-    const hospitals = { ...s.hospitals };
-    const plannedIntakes = s.plannedIntakes.map((i) => ({ ...i }));
-    applyMeasure(hospitals, plannedIntakes, rec);
-    set({ recommendations: updatedRecs, hospitals, plannedIntakes });
+    set({
+      hospitals: next.hospitals,
+      plannedIntakes: next.plannedIntakes,
+      recommendations: updatedRecs,
+    });
   },
 }));
 
-function applyMeasure(
-  hospitals: Record<string, Hospital>,
-  plannedIntakes: PlannedIntake[],
-  rec: Recommendation
-): void {
-  switch (rec.action) {
-    case 'prepare-reception': {
-      const intakeId = rec.intakeRefId;
-      if (!intakeId) return;
-      const idx = plannedIntakes.findIndex((i) => i.id === intakeId);
-      if (idx === -1) return;
-      plannedIntakes[idx] = { ...plannedIntakes[idx], status: 'preparing' };
-      return;
-    }
-    case 'activate-surge': {
-      for (const id of rec.targetHospitalIds) {
-        const h = hospitals[id];
-        if (!h) continue;
-        for (const r of ['notaufnahme', 'op_saal', 'its_bett', 'normal_bett'] as const) {
-          if (h.capacity[r].surgeReserve > 0) {
-            h.capacity[r] = { ...h.capacity[r], surgeActive: true };
-          }
-        }
-      }
-      return;
-    }
-    case 'cancel-elective': {
-      for (const id of rec.targetHospitalIds) {
-        const h = hospitals[id];
-        if (!h) continue;
-        h.electiveActive = false;
-        const op = h.capacity.op_saal;
-        const extra = Math.round(op.total * 0.25);
-        h.capacity.op_saal = { ...op, surgeReserve: op.surgeReserve + extra };
-      }
-      return;
-    }
-    case 'staff-callup': {
-      for (const id of rec.targetHospitalIds) {
-        const h = hospitals[id];
-        if (!h) continue;
-        h.staff = { onDuty: h.staff.onDuty + h.staff.onCall, onCall: 0 };
-      }
-      return;
-    }
-    case 'alert-adjacent': {
-      for (const id of rec.targetHospitalIds) {
-        const h = hospitals[id];
-        if (!h) continue;
-        if (h.escalation === 'normal') h.escalation = 'erhoeht';
-      }
-      return;
-    }
-    default:
-      // MVP: andere Massnahmen sind registriert, Effekt folgt in spaeteren Phasen.
-      return;
-  }
-}
+// Alter Store-interner applyMeasure-Helper entfernt — lib/simulation/measures.ts
+// ist jetzt die einzige Quelle der Massnahmen-Anwendung (DRY).

@@ -10,6 +10,7 @@ import { LeftPanel } from '@/components/panels/LeftPanel';
 import { IncidentLauncher } from '@/components/panels/IncidentLauncher';
 import { PlannedIntakeForm } from '@/components/panels/PlannedIntakeForm';
 import { RightPanel } from '@/components/panels/RightPanel';
+import { TimelineStrip } from '@/components/panels/TimelineStrip';
 
 export default function Home() {
   return (
@@ -31,6 +32,7 @@ export default function Home() {
         <PlannedIntakeForm />
       </LeftPanel>
       <RightPanel />
+      <TimelineStrip />
     </main>
   );
 }

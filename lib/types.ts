@@ -300,13 +300,28 @@ export interface Route {
 // §11 Simulation-State (Store)
 // ============================================================================
 
-// ForkPreviewResult wird in doc/SIMULATION.md §8 konkretisiert (Phase 9).
-// Fuer Phase 1 nur als Placeholder, damit SimState vollstaendig typisierbar ist.
+// ForkPreviewResult laut doc/SIMULATION.md §8 — konkret ausimplementiert
+// in Phase 9 (lib/simulation/fork-preview.ts).
+export interface TimelinePoint {
+  simTime: number;
+  overall: number;
+  notaufnahme: number;
+  op_saal: number;
+  its_bett: number;
+  normal_bett: number;
+}
+
 export interface ForkPreviewResult {
   recommendationId: string;
   computedAt: number;
-  // TODO(Phase 9, SIMULATION.md §8): konkrete Felder (Kurven, Deltas)
-  [key: string]: unknown;
+  horizonMin: number;
+  curveWithout: TimelinePoint[];
+  curveWith: TimelinePoint[];
+  diff: {
+    peakLoadDelta: number;
+    critCountDelta: number;
+    bedsFreedDelta: number;
+  };
 }
 
 export interface OccupancyHistoryEntry {
@@ -345,4 +360,5 @@ export interface SimState {
 
   // UI-State (non-sim, aber im Store fuer globalen Zugriff).
   selectedHospitalId?: string;
+  hoveredRecommendationId?: string;
 }

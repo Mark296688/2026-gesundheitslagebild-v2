@@ -19,6 +19,7 @@ const EFFORT_COLOR: Record<Recommendation['effortLevel'], string> = {
 export function RecommendationList() {
   const recs = useSimStore((s) => s.recommendations);
   const execute = useSimStore((s) => s.executeRecommendation);
+  const hover = useSimStore((s) => s.hoverRecommendation);
 
   const { open, done } = useMemo(() => {
     const o: Recommendation[] = [];
@@ -46,7 +47,13 @@ export function RecommendationList() {
       {open.length > 0 ? (
         <ul className="flex flex-col gap-2">
           {open.map((r) => (
-            <RecommendationCard key={r.id} rec={r} onExecute={() => execute(r.id)} />
+            <RecommendationCard
+              key={r.id}
+              rec={r}
+              onExecute={() => execute(r.id)}
+              onHoverEnter={() => hover(r.id)}
+              onHoverLeave={() => hover(undefined)}
+            />
           ))}
         </ul>
       ) : null}
@@ -81,14 +88,20 @@ export function RecommendationList() {
 function RecommendationCard({
   rec,
   onExecute,
+  onHoverEnter,
+  onHoverLeave,
 }: {
   rec: Recommendation;
   onExecute: () => void;
+  onHoverEnter: () => void;
+  onHoverLeave: () => void;
 }) {
   return (
     <li
       data-testid="recommendation-card"
       data-rec-id={rec.id}
+      onMouseEnter={onHoverEnter}
+      onMouseLeave={onHoverLeave}
       className="flex flex-col gap-2 rounded-md p-3"
       style={{
         background: 'var(--bg-elevated-2)',
